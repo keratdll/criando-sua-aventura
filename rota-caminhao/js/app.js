@@ -782,8 +782,9 @@
   /** Liga o alerta à rua mais próxima para desenhar o trecho no mapa. */
   async function attachStreet(report) {
     try {
-      const ways = await svc.waysAround(report.lat, report.lon, 35);
-      const seg = RC.restrictions.nearestWaySegment(ways, [report.lat, report.lon], 120, 40);
+      const street = await svc.nearestStreet(report.lat, report.lon);
+      if (!street) return;
+      const seg = RC.restrictions.nearestWaySegment([street], [report.lat, report.lon], 120, 40);
       if (!seg) return;
       const r = state.reports.find((x) => x.id === report.id);
       if (!r) return;
@@ -1007,90 +1008,74 @@
     destination: { color: '#ea580c', dashArray: '2 7' },
     conditional: { color: '#9333ea', dashArray: '12 6' },
   };
-  const RESTR_CACHE_KEY = 'rotaCaminhao.ruas.v1';
-  const RESTR_CACHE_DAYS = 7;
-  const restr = {
-    ways: new Map(),   // id -> { id, tags, shape }
-    cells: new Map(),  // bloco -> data da busca
-    inFlight: false, pending: false, timer: null, error: null, retryAt: 0, count: 0,
-  };
-
-  const boxOf = (b) => [b.getSouth(), b.getWest(), b.getNorth(), b.getEast()];
-
-  function loadRestrCache() {
-    try {
-      const c = JSON.parse(localStorage.getItem(RESTR_CACHE_KEY) || '{}');
-      const now = Date.now();
-      for (const [k, ts] of Object.entries(c.cells || {})) if (now - ts < RESTR_CACHE_DAYS * 864e5) restr.cells.set(k, ts);
-      for (const w of c.ways || []) restr.ways.set(w.id, w);
-    } catch (_) { /* sem cache */ }
-  }
-
-  function saveRestrCache() {
-    if (restr.ways.size > 20000) { restr.ways.clear(); restr.cells.clear(); }
-    try {
-      localStorage.setItem(RESTR_CACHE_KEY, JSON.stringify({ cells: Object.fromEntries(restr.cells), ways: [...restr.ways.values()] }));
-    } catch (_) {
-      try { localStorage.removeItem(RESTR_CACHE_KEY); } catch (__) { /* ignora */ }
-    }
-  }
+  // As ruas vêm de um arquivo que acompanha o app (gerado do OpenStreetMap
+  // por ferramentas/extrair_ruas.py): não depende de servidor externo.
+  const restr = { ways: new Map(), loaded: false, inFlight: false, error: null, date: '', count: 0, timer: null };
 
   function scheduleRestrictions() {
     clearTimeout(restr.timer);
-    restr.timer = setTimeout(loadRestrictions, 600);
+    restr.timer = setTimeout(renderRestrictions, 150);
   }
 
-  /**
-   * Busca só os blocos da tela que ainda não foram buscados. Uma busca por vez:
-   * mexer no mapa durante a busca não cancela nada, só agenda a próxima.
-   */
-  async function loadRestrictions(force) {
-    if (!state.options.showRestrictions || map.getZoom() < cfg.restrictionsMinZoom) { renderRestrictions(); return; }
-    if (restr.inFlight) { restr.pending = true; return; }
-    if (!force && restr.error && Date.now() < restr.retryAt) { renderRestrictions(); return; }
-    const missing = RC.restrictions.cellsForBox(boxOf(map.getBounds().pad(0.1))).filter((c) => !restr.cells.has(c.key));
-    if (!missing.length || missing.length > 60) { restr.error = null; renderRestrictions(); return; }
-
+  async function loadRestrictions() {
+    if (restr.loaded || restr.inFlight) { renderRestrictions(); return; }
     restr.inFlight = true;
     restr.error = null;
     updateRestrPill();
     try {
-      const ways = await svc.restrictedWays(RC.restrictions.boxForCells(missing));
-      const now = Date.now();
-      for (const w of ways) restr.ways.set(w.id, w);
-      for (const c of missing) restr.cells.set(c.key, now);
-      saveRestrCache();
-    } catch (err) {
-      restr.error = errMsg(err);
-      restr.retryAt = Date.now() + 30000; // não insiste a cada movimento do mapa
+      const res = await fetch(cfg.restrictionsFile);
+      if (!res.ok) throw new Error(String(res.status));
+      const data = await res.json();
+      for (const [id, tags, flat] of data.ways) {
+        const shape = [];
+        for (let i = 0; i < flat.length; i += 2) shape.push([flat[i], flat[i + 1]]);
+        restr.ways.set(id, { id, tags, shape });
+      }
+      restr.date = data.gerado || '';
+      restr.loaded = true;
+    } catch (_) {
+      restr.error = 'Não foi possível carregar as ruas proibidas.';
     }
     restr.inFlight = false;
     renderRestrictions();
-    if (restr.pending) {
-      restr.pending = false;
-      if (!restr.error) loadRestrictions();
-    }
   }
 
-  /** Redesenha as ruas proibidas para o caminhão atual (sem nova consulta). */
+  /**
+   * Redesenha as ruas proibidas para o caminhão atual, só as que estão na tela.
+   * Trechos curtos (viadutos, pontes, túneis) ganham uma "placa" para não sumirem.
+   */
   function renderRestrictions() {
     layers.restrictions.clearLayers();
     restr.count = 0;
-    if (state.options.showRestrictions) {
+    if (state.options.showRestrictions && map.getZoom() >= cfg.restrictionsMinZoom) {
       const t = truck();
-      const view = map.getBounds().pad(0.05);
+      const view = map.getBounds();
+      const area = view.pad(0.3);
+      const showSigns = map.getZoom() >= 14;
       for (const w of restr.ways.values()) {
+        if (!w.bounds) {
+          w.bounds = L.latLngBounds(w.shape);
+          w.length = geo.distanceAlong(w.shape, 0, w.shape.length - 1);
+        }
+        if (!area.intersects(w.bounds)) continue;
         const ev = RC.restrictions.evaluate(w.tags, t);
         if (!ev) continue;
         const st = RESTR_STYLES[ev.status];
         const name = w.tags.name || w.tags.ref || 'Rua sem nome';
-        const label = { blocked: `Proibida para ${t.nome}`, destination: 'Só carga e descarga', conditional: 'Proibida em alguns horários' }[ev.status];
+        const label = { blocked: `Proibida para ${t.nome}`, destination: 'Só carga e descarga', conditional: 'Restrita' }[ev.status];
         const popup = `<div class="restr-popup"><strong>${esc(name)}</strong><span style="color:${st.color};font-weight:700">${esc(label)}</span><ul>${ev.reasons.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>`;
         L.polyline(w.shape, { renderer: restrRenderer, color: '#ffffff', weight: 8, opacity: 0.55, interactive: false }).addTo(layers.restrictions);
-        const line = L.polyline(w.shape, {
+        L.polyline(w.shape, {
           renderer: restrRenderer, color: st.color, weight: 5, dashArray: st.dashArray, lineCap: 'butt', opacity: 0.95, bubblingMouseEvents: false,
         }).on('click', onRestrictedTap(popup)).addTo(layers.restrictions);
-        if (view.intersects(line.getBounds())) restr.count++;
+        if (showSigns && ev.status === 'blocked' && w.length < 250) {
+          const mid = geo.pointAhead(w.shape, 0, 0, w.length / 2);
+          L.marker(mid, {
+            icon: L.divIcon({ className: '', html: `<div class="restr-sign">${esc(ev.sign)}</div>`, iconSize: [40, 40], iconAnchor: [20, 20] }),
+            keyboard: false, title: `${name}: ${ev.reasons[0]}`, bubblingMouseEvents: false,
+          }).on('click', onRestrictedTap(popup)).addTo(layers.restrictions);
+        }
+        if (view.intersects(w.bounds)) restr.count++;
       }
     }
     updateRestrPill();
@@ -1104,18 +1089,20 @@
     const zoomedOut = map.getZoom() < cfg.restrictionsMinZoom;
     let text;
     let info = true;
-    if (restr.inFlight) text = 'Buscando ruas proibidas…';
+    if (restr.inFlight) text = 'Carregando ruas proibidas…';
     else if (restr.count) { text = `${restr.count} rua${restr.count > 1 ? 's' : ''} com restrição p/ ${name}`; info = false; }
     else if (zoomedOut) text = 'Aproxime o mapa para ver as ruas proibidas';
     else if (restr.error) text = `${restr.error} Toque para tentar de novo.`;
+    else if (!restr.loaded) text = 'Carregando ruas proibidas…';
     else text = `Nenhuma rua proibida p/ ${name} nesta área`;
     $('#restr-text').textContent = text;
     pill.classList.toggle('info', info);
   }
 
   $('#restr-pill').addEventListener('click', () => {
-    if (restr.error && !restr.inFlight) { loadRestrictions(true); return; }
+    if (restr.error && !restr.inFlight) { loadRestrictions(); return; }
     const lg = $('#restr-legend');
+    if (restr.date) $('#restr-date').textContent = `Dados do mapa de ${restr.date.split('-').reverse().join('/')}.`;
     lg.hidden = !lg.hidden;
     $('#restr-pill').setAttribute('aria-expanded', String(!lg.hidden));
   });
@@ -1137,7 +1124,7 @@
   $('#opt-restr').addEventListener('change', (e) => {
     state.options.showRestrictions = e.target.checked;
     save();
-    if (e.target.checked) loadRestrictions(); else renderRestrictions();
+    loadRestrictions();
   });
   $('#opt-voice').addEventListener('change', (e) => { state.options.voice = e.target.checked; save(); });
   $('#opt-zmrc').addEventListener('change', (e) => { state.options.showZmrc = e.target.checked; save(); renderSettings(); });
@@ -1166,9 +1153,8 @@
   const pts = [state.origin, ...state.stops].filter(Boolean).map((p) => [p.lat, p.lon]);
   if (pts.length > 1) fitTo(pts);
   else if (pts.length === 1) map.setView(pts[0], 14);
-  loadRestrCache();
   updateRestrPill();
-  scheduleRestrictions();
+  loadRestrictions();
 
   // Expõe para depuração/testes.
   window.RC.app = { state, map, calculate, startNav, stopNav, addStop, setOrigin, addReport };

@@ -12,9 +12,6 @@
 
   const geo = (root.RC && root.RC.geo) || (typeof require === 'function' ? require('./geo.js') : null);
 
-  // Tipos de via considerados (ignora calçadas, ciclovias, trilhas etc.).
-  const ROAD_TYPES = 'motorway|motorway_link|trunk|trunk_link|primary|primary_link|secondary|secondary_link|tertiary|tertiary_link|unclassified|residential|living_street|service|road';
-
   const fmt = (v) => String(Math.round(v * 100) / 100).replace('.', ',');
 
   /** "4.5", "4,5 m", "14'6\"" -> metros; "none"/"default" -> null */
@@ -44,11 +41,13 @@
   function evaluate(tags, truck) {
     if (!tags) return null;
     const reasons = [];
+    let sign = ''; // texto da placa no mapa (ex.: "4,3 m")
     const limit = (keys, parse, actual, label, unit) => {
       for (const k of keys) {
         const max = parse(tags[k]);
         if (max != null && actual > max) {
           reasons.push(`${label} máx. ${fmt(max)} ${unit} (seu caminhão: ${fmt(actual)} ${unit})`);
+          if (!sign) sign = `${fmt(max)} ${unit}`;
           return;
         }
       }
@@ -63,63 +62,32 @@
     if (hgv === 'no' || hgv === 'private') reasons.push('Proibido para caminhões');
     if (truck.hazmat && String(tags.hazmat || '').toLowerCase() === 'no') reasons.push('Proibido para carga perigosa');
 
-    if (reasons.length) return { status: 'blocked', reasons };
+    if (reasons.length) return { status: 'blocked', reasons, sign: sign || '⛔' };
 
-    if (hgv === 'destination' || hgv === 'delivery') {
+    if (hgv === 'destination' || hgv === 'delivery' || hgv === 'local') {
       return { status: 'destination', reasons: ['Caminhão só para carga e descarga nesta rua'] };
     }
     const cond = tags['hgv:conditional'] || tags['maxweight:conditional'] || tags['maxlength:conditional'];
     if (cond && /\bno\b|@/.test(String(cond))) {
-      return { status: 'conditional', reasons: [`Restrição por horário: ${cond}`] };
+      return { status: 'conditional', reasons: [describeConditional(cond)] };
     }
+    if (hgv === 'permit') return { status: 'conditional', reasons: ['Caminhão só com autorização especial'] };
+    if (hgv === 'discouraged') return { status: 'conditional', reasons: ['Via não recomendada para caminhões'] };
     return null;
   }
 
-  // Marcações que interessam ao caminhão.
-  const TAG_KEYS = ['maxheight', 'maxheight:physical', 'maxwidth', 'maxwidth:physical', 'maxlength', 'maxlength:hgv',
-    'maxweight', 'maxweight:hgv', 'maxaxleload', 'hgv', 'hgv:conditional', 'maxweight:conditional', 'maxlength:conditional', 'hazmat'];
+  const DAYS = { Mo: 'seg', Tu: 'ter', We: 'qua', Th: 'qui', Fr: 'sex', Sa: 'sáb', Su: 'dom', PH: 'feriados' };
 
-  /** Consulta Overpass (uma única passada) das ruas com alguma dessas marcações na área. */
-  function overpassQuery(south, west, north, east) {
-    const bb = [south, west, north, east].map((v) => v.toFixed(5)).join(',');
-    const keys = TAG_KEYS.join('|');
-    return `[out:json][timeout:25];way[highway~"^(${ROAD_TYPES})$"][~"^(${keys})$"~"."](${bb});out tags geom qt;`;
-  }
-
-  /* Blocos fixos de ~2 km: o app só busca os blocos que ainda não tem. */
-  const CELL = 0.02;
-  const cellKey = (i, j) => `${i}:${j}`;
-
-  /** Blocos que cobrem a área [sul, oeste, norte, leste]. */
-  function cellsForBox(box) {
-    const [s, w, n, e] = box;
-    const out = [];
-    for (let i = Math.floor(s / CELL); i <= Math.floor(n / CELL); i++) {
-      for (let j = Math.floor(w / CELL); j <= Math.floor(e / CELL); j++) out.push({ i, j, key: cellKey(i, j) });
-    }
-    return out;
-  }
-
-  /** Área [sul, oeste, norte, leste] que cobre os blocos dados. */
-  function boxForCells(cells) {
-    let s = Infinity, w = Infinity, n = -Infinity, e = -Infinity;
-    for (const c of cells) {
-      s = Math.min(s, c.i * CELL); n = Math.max(n, (c.i + 1) * CELL);
-      w = Math.min(w, c.j * CELL); e = Math.max(e, (c.j + 1) * CELL);
-    }
-    return [s, w, n, e];
-  }
-
-  /** Consulta das ruas próximas de um ponto (para ligar um alerta à rua). */
-  function overpassAroundQuery(lat, lon, radius = 30) {
-    return `[out:json][timeout:15];way[highway~"^(${ROAD_TYPES})$"](around:${radius},${lat.toFixed(6)},${lon.toFixed(6)});out tags geom qt;`;
-  }
-
-  /** Converte a resposta do Overpass em [{ id, tags, shape: [[lat, lon]] }]. */
-  function parseOverpass(json) {
-    return ((json && json.elements) || [])
-      .filter((e) => e.type === 'way' && Array.isArray(e.geometry) && e.geometry.length > 1)
-      .map((e) => ({ id: e.id, tags: e.tags || {}, shape: e.geometry.map((g) => [g.lat, g.lon]) }));
+  /** "no @ (Mo-Fr 05:00-21:00; Sa 10:00-14:00)" -> "Proibida seg–sex 05:00–21:00; sáb 10:00–14:00" */
+  function describeConditional(cond) {
+    const m = String(cond).match(/^\s*no\s*@\s*\(?(.*?)\)?\s*$/i);
+    if (!m) return `Restrição por horário: ${cond}`;
+    const when = m[1]
+      .replace(/\b(Mo|Tu|We|Th|Fr|Sa|Su|PH)\b/g, (d) => DAYS[d])
+      .replace(/(\d{2}:\d{2})-(\d{2}:\d{2})/g, '$1–$2')
+      .replace(/([a-zá]{3})-([a-zá]{3})/g, '$1–$2')
+      .replace(/,/g, ', ');
+    return `Proibida ${when}`;
   }
 
   /**
@@ -153,5 +121,5 @@
     return { street: t.name || t.ref || '', shape: out.map(([a, b]) => [Math.round(a * 1e6) / 1e6, Math.round(b * 1e6) / 1e6]) };
   }
 
-  return { parseMeters, parseTonnes, evaluate, overpassQuery, overpassAroundQuery, parseOverpass, nearestWaySegment, cellsForBox, boxForCells, ROAD_TYPES, TAG_KEYS, CELL };
+  return { parseMeters, parseTonnes, evaluate, describeConditional, nearestWaySegment };
 });

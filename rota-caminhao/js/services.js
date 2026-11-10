@@ -223,45 +223,19 @@
     return `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
   }
 
-  /* -------------------- Ruas com restrição (Overpass/OSM) -------------------- */
+  /* ----------------------- Rua mais próxima (Valhalla) ----------------------- */
 
-  /**
-   * Consulta Overpass com limite de tempo por servidor; se um falhar ou
-   * demorar, tenta o próximo. Nunca fica esperando para sempre.
-   */
-  async function overpass(query, timeoutMs = 25000) {
-    let lastErr;
-    for (const url of cfg.overpassUrls) {
-      const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), timeoutMs);
-      try {
-        const res = await fetch(url, { method: 'POST', body: new URLSearchParams({ data: query }), signal: ctrl.signal });
-        if (res.ok) return await res.json();
-        lastErr = new ServiceError(res.status === 429 || res.status === 504
-          ? 'Servidor do mapa ocupado agora.'
-          : 'Servidor do mapa indisponível agora.');
-      } catch (err) {
-        lastErr = new ServiceError(err.name === 'AbortError'
-          ? 'O servidor do mapa demorou demais.'
-          : 'Sem conexão com o servidor do mapa.', err);
-      } finally {
-        clearTimeout(timer);
-      }
-    }
-    throw lastErr;
+  /** Rua mais próxima do ponto: { tags: { name }, shape } ou null. */
+  async function nearestStreet(lat, lon) {
+    const body = { locations: [{ lat, lon }], costing: 'auto', verbose: true };
+    const res = await fetchJson(`${cfg.valhallaUrl}/locate?json=${encodeURIComponent(JSON.stringify(body))}`, 15000);
+    const edge = res.ok && res.data && res.data[0] && (res.data[0].edges || [])[0];
+    if (!edge || !edge.edge_info || !edge.edge_info.shape) return null;
+    return {
+      tags: { name: (edge.edge_info.names || [])[0] || '' },
+      shape: geo.decodePolyline(edge.edge_info.shape, 6),
+    };
   }
 
-  /** Ruas com marcações de restrição dentro da área [sul, oeste, norte, leste]. */
-  async function restrictedWays(box) {
-    const json = await overpass(RC.restrictions.overpassQuery(...box));
-    return RC.restrictions.parseOverpass(json);
-  }
-
-  /** Ruas a até `radius` metros do ponto. */
-  async function waysAround(lat, lon, radius) {
-    const json = await overpass(RC.restrictions.overpassAroundQuery(lat, lon, radius), 15000);
-    return RC.restrictions.parseOverpass(json);
-  }
-
-  RC.services = { route, optimizeOrder, searchAddress, reverse, restrictedWays, waysAround, ServiceError, CEP_RE };
+  RC.services = { route, optimizeOrder, searchAddress, reverse, nearestStreet, ServiceError, CEP_RE };
 })(typeof self !== 'undefined' ? self : this);

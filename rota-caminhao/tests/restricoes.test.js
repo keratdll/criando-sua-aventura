@@ -44,41 +44,34 @@ test('limite de peso e proibição de caminhões', () => {
   assert.equal(R.evaluate({ hgv: 'yes', maxheight: 'default' }, carreta), null);
 });
 
-test('consulta Overpass inclui a área e as marcações', () => {
-  const q = R.overpassQuery(-23.56, -46.66, -23.53, -46.62);
-  assert.match(q, /\(-23\.56000,-46\.66000,-23\.53000,-46\.62000\)/);
-  for (const k of ['maxheight', 'maxlength', 'maxweight', 'hgv']) assert.ok(q.includes(k), k);
-});
-
-test('converte resposta do Overpass e acha o trecho da rua mais próxima', () => {
-  const json = {
-    elements: [
-      { type: 'way', id: 1, tags: { name: 'Rua A' }, geometry: [{ lat: -23.5, lon: -46.6 }, { lat: -23.5, lon: -46.595 }, { lat: -23.5, lon: -46.59 }] },
-      { type: 'way', id: 2, tags: { name: 'Rua B' }, geometry: [{ lat: -23.51, lon: -46.6 }, { lat: -23.51, lon: -46.59 }] },
-      { type: 'node', id: 3 },
-    ],
-  };
-  const ways = R.parseOverpass(json);
-  assert.equal(ways.length, 2);
+test('acha o trecho da rua mais próxima', () => {
+  const ways = [
+    { tags: { name: 'Rua A' }, shape: [[-23.5, -46.6], [-23.5, -46.595], [-23.5, -46.59]] },
+    { tags: { name: 'Rua B' }, shape: [[-23.51, -46.6], [-23.51, -46.59]] },
+  ];
   const seg = R.nearestWaySegment(ways, [-23.5001, -46.595], 120, 40);
   assert.equal(seg.street, 'Rua A');
   assert.ok(seg.shape.length >= 2);
   assert.equal(R.nearestWaySegment(ways, [-23.505, -46.595], 120, 40), null, 'longe das duas ruas');
 });
 
-test('blocos de ~2 km: cobre a área e só busca o que falta', () => {
-  const cells = R.cellsForBox([-23.535, -46.645, -23.515, -46.625]);
-  assert.ok(cells.length >= 1 && cells.length <= 4, cells.length);
-  const box = R.boxForCells(cells);
-  assert.ok(box[0] <= -23.535 && box[2] >= -23.515 && box[1] <= -46.645 && box[3] >= -46.625, JSON.stringify(box));
-  // mesma área deslocada um pouco usa os mesmos blocos
-  const again = R.cellsForBox([-23.534, -46.644, -23.516, -46.626]).map((c) => c.key);
-  assert.ok(again.every((k) => cells.some((c) => c.key === k)));
+test('horários e outros valores de restrição', () => {
+  assert.equal(R.describeConditional('no @ (Mo-Fr 05:00-21:00; Sa 10:00-14:00)'), 'Proibida seg–sex 05:00–21:00; sáb 10:00–14:00');
+  assert.equal(R.evaluate({ hgv: 'permit' }, toco).status, 'conditional');
+  assert.equal(R.evaluate({ hgv: 'local' }, toco).status, 'destination');
+  assert.equal(R.evaluate({ hgv: 'designated' }, carreta), null);
 });
 
-test('consulta única com as marcações e sem escapes', () => {
-  const q = R.overpassQuery(-23.56, -46.66, -23.53, -46.62);
-  assert.ok(q.includes('maxheight|maxheight:physical'));
-  assert.ok(!q.includes('\\'));
-  assert.equal((q.match(/way\[/g) || []).length, 1);
+test('arquivo de ruas da região: formato e quantidade por caminhão', () => {
+  const data = require('../dados/ruas-restritas.json');
+  assert.ok(data.ways.length > 500, data.ways.length);
+  const [id, tags, flat] = data.ways[0];
+  assert.ok(Number.isInteger(id) && typeof tags === 'object' && flat.length >= 4 && flat.length % 2 === 0);
+  const count = (t) => data.ways.filter((w) => R.evaluate(w[1], t)).length;
+  const nToco = count(toco); const nTruck = count(truck); const nCarreta = count(carreta);
+  assert.ok(nToco > 0 && nToco <= nTruck && nTruck <= nCarreta, `${nToco} ${nTruck} ${nCarreta}`);
+  // todas as coordenadas dentro (ou perto) da Grande SP + Baixada
+  for (const w of data.ways) for (let i = 0; i < w[2].length; i += 2) {
+    assert.ok(w[2][i] > -24.6 && w[2][i] < -22.9 && w[2][i + 1] > -47.5 && w[2][i + 1] < -45.4);
+  }
 });

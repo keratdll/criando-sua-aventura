@@ -22,7 +22,18 @@ Assim que o motorista escolhe o caminhão, o mapa mostra **tracejadas** as ruas 
 | roxa tracejada | proibida em alguns horários |
 | vinho tracejada | trecho reportado por um motorista (ex.: curva fechada) |
 
-O app busca o mapa em blocos de cerca de 2 km, uma busca por vez, com limite de 25 segundos por servidor. Os blocos já buscados ficam salvos no celular por 7 dias. Ao trocar de caminhão, o mapa se atualiza na hora. Toque numa rua tracejada para ver o motivo, por exemplo "Altura máx. 4,3 m (seu caminhão: 4,4 m)". Os dados vêm das marcações do OpenStreetMap, consultadas pelo serviço Overpass. Curvas fechadas raramente estão cadastradas no mapa, então quando um motorista reporta "rua estreita / curva fechada", "proibido", "limite de peso" ou "obra", o app liga o alerta ao trecho da rua mais próxima e o desenha tracejado.
+Ao trocar de caminhão, o mapa se atualiza na hora. Toque numa rua tracejada para ver o motivo, por exemplo "Altura máx. 4,3 m (seu caminhão: 4,4 m)". Trechos curtos (viadutos, pontes, túneis) ganham uma **placa** com a altura ou o peso máximo, para não sumirem no mapa.
+
+Os dados vêm das marcações do OpenStreetMap e ficam num arquivo que acompanha o app (`dados/ruas-restritas.json`). Por isso aparecem na hora, sem depender de nenhum servidor. Na versão atual são cerca de 1.100 ruas na Grande SP e na Baixada: viadutos baixos, pontes com limite de peso, ruas proibidas para caminhão e restrições por horário. Curvas fechadas raramente estão cadastradas no mapa, então quando um motorista reporta "rua estreita / curva fechada", "proibido", "limite de peso" ou "obra", o app liga o alerta ao trecho da rua mais próxima e o desenha tracejado.
+
+### Atualizar os dados das ruas (de tempos em tempos)
+
+```bash
+pip install osmium
+curl -O https://download.openstreetmap.fr/extracts/south-america/brazil/southeast/sao-paulo.osm.pbf
+python3 ferramentas/extrair_ruas.py sao-paulo.osm.pbf /tmp/ruas-brutas.json
+node ferramentas/compactar_ruas.js /tmp/ruas-brutas.json dados/ruas-restritas.json
+```
 
 ## Trânsito
 
