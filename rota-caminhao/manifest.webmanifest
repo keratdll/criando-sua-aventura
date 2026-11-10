@@ -1,0 +1,13 @@
+{
+  "name": "Rota Caminhão",
+  "short_name": "Rota Caminhão",
+  "description": "Rotas para caminhão que desviam de pontes baixas, ruas estreitas e trânsito.",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#14532d",
+  "theme_color": "#14532d",
+  "lang": "pt-BR",
+  "icons": [
+    { "src": "img/icone.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

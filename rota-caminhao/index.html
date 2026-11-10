@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#14532d">
+  <meta name="description" content="Rotas para caminhão que desviam de pontes baixas, ruas estreitas e trânsito.">
+  <title>Rota Caminhão</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="img/icone.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <div id="map" aria-label="Mapa"></div>
+
+  <!-- Barra superior flutuante -->
+  <header class="topbar">
+    <button id="truck-chip" class="chip" type="button" aria-label="Escolher caminhão">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h11v9H3zM14 9h4l3 3v3h-7z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="7" cy="17" r="1.8" fill="currentColor"/><circle cx="17" cy="17" r="1.8" fill="currentColor"/></svg>
+      <span id="truck-chip-label">Carreta</span>
+    </button>
+    <div class="topbar-actions">
+      <button id="btn-traffic" class="fab" type="button" aria-label="Ver trânsito" title="Ver trânsito">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="2.5" width="8" height="19" rx="3" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="7" r="1.6" fill="#dc2626"/><circle cx="12" cy="12" r="1.6" fill="#eab308"/><circle cx="12" cy="17" r="1.6" fill="#16a34a"/></svg>
+      </button>
+      <button id="btn-locate" class="fab" type="button" aria-label="Centralizar na minha posição" title="Minha posição">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Aviso de modo "toque no mapa" -->
+  <div id="mode-banner" class="mode-banner" hidden>
+    <span id="mode-text">Toque no mapa</span>
+    <button id="mode-cancel" type="button" class="btn-text">Cancelar</button>
+  </div>
+
+  <!-- Painel de navegação (instrução atual) -->
+  <div id="nav-banner" class="nav-banner" hidden>
+    <div class="nav-arrow" id="nav-arrow">↑</div>
+    <div class="nav-text">
+      <div class="nav-dist" id="nav-dist">—</div>
+      <div class="nav-instr" id="nav-instr">Aguardando GPS…</div>
+    </div>
+  </div>
+
+  <!-- Barra inferior durante a navegação -->
+  <div id="nav-bar" class="nav-bar" hidden>
+    <div class="nav-next">
+      <div class="nav-next-label" id="nav-next-label">Próxima entrega</div>
+      <div class="nav-next-info" id="nav-next-info">—</div>
+    </div>
+    <div class="nav-actions">
+      <button id="nav-delivered" type="button" class="btn btn-primary">✓ Entregue</button>
+      <button id="nav-jam" type="button" class="btn btn-warn" title="Desviar do trânsito à frente">🚦 Trânsito à frente</button>
+      <button id="nav-recalc" type="button" class="btn btn-ghost">Recalcular</button>
+      <button id="nav-stop" type="button" class="btn btn-ghost">Sair</button>
+    </div>
+  </div>
+
+  <!-- Painel principal (gaveta inferior no celular, lateral no computador) -->
+  <section id="sheet" class="sheet" data-state="half" aria-label="Painel">
+    <button class="sheet-handle" id="sheet-handle" type="button" aria-label="Expandir ou recolher painel"><span></span></button>
+
+    <nav class="tabs" role="tablist">
+      <button role="tab" class="tab active" data-tab="rota" type="button">Rota</button>
+      <button role="tab" class="tab" data-tab="caminhao" type="button">Caminhão</button>
+      <button role="tab" class="tab" data-tab="alertas" type="button">Alertas <span id="alert-count" class="badge" hidden>0</span></button>
+      <button role="tab" class="tab" data-tab="ajustes" type="button">Ajustes</button>
+    </nav>
+
+    <div class="sheet-body">
+      <!-- ============ ROTA ============ -->
+      <div class="tab-panel active" id="tab-rota" role="tabpanel">
+        <div class="field-label">Partida</div>
+        <div class="origin-row">
+          <div id="origin-label" class="origin-label muted">Defina o ponto de partida</div>
+          <button id="btn-origin-gps" class="btn btn-small" type="button">📍 Minha localização</button>
+        </div>
+
+        <div class="field-label">Entregas <span class="muted" id="stops-count"></span></div>
+        <ol id="stops-list" class="stops-list"></ol>
+        <p id="stops-empty" class="empty">Nenhuma entrega ainda. Digite um CEP ou endereço abaixo, ou toque no mapa.</p>
+
+        <form id="search-form" class="search-form" autocomplete="off">
+          <input id="search-input" type="search" inputmode="search" enterkeyhint="search"
+                 placeholder="CEP ou endereço (ex.: 11013-000, 120)" aria-label="CEP ou endereço">
+          <button class="btn btn-primary" type="submit" id="search-btn">Adicionar</button>
+        </form>
+        <div class="search-target">
+          <label><input type="radio" name="target" value="stop" checked> como entrega</label>
+          <label><input type="radio" name="target" value="origin"> como partida</label>
+        </div>
+        <ul id="search-results" class="search-results" hidden></ul>
+
+        <div class="options">
+          <label class="switch"><input type="checkbox" id="opt-return"><span></span> Voltar à partida no fim</label>
+          <label class="switch"><input type="checkbox" id="opt-tolls"><span></span> Evitar pedágios</label>
+        </div>
+
+        <div class="actions">
+          <button id="btn-calc" class="btn btn-primary btn-block" type="button">Calcular rota</button>
+          <button id="btn-optimize" class="btn btn-ghost btn-block" type="button" title="Reordena as entregas para o menor tempo">Sugerir melhor ordem</button>
+        </div>
+
+        <div id="route-result" hidden>
+          <div class="summary-card">
+            <div class="summary-main">
+              <div><span class="big" id="sum-time">—</span><span class="muted"> · </span><span id="sum-dist">—</span></div>
+              <div class="muted" id="sum-eta"></div>
+            </div>
+            <button id="btn-start-nav" class="btn btn-primary" type="button">▶ Iniciar</button>
+          </div>
+          <div id="alternatives" class="alternatives"></div>
+          <ul id="warnings" class="warnings"></ul>
+          <div class="traffic-row">
+            <button id="btn-traffic-google" class="btn btn-ghost" type="button">🚦 Ver trânsito no Google Maps</button>
+            <button id="btn-mark-jam" class="btn btn-ghost" type="button">Marcar congestionamento</button>
+          </div>
+          <details class="instructions">
+            <summary>Instruções passo a passo</summary>
+            <ol id="instructions-list"></ol>
+          </details>
+        </div>
+      </div>
+
+      <!-- ============ CAMINHÃO ============ -->
+      <div class="tab-panel" id="tab-caminhao" role="tabpanel">
+        <p class="muted small">Escolha o tipo e confira as medidas do <strong>seu</strong> caminhão com a carga. A rota evita pontes, ruas e vias que não comportam essas medidas.</p>
+        <div id="truck-cards" class="truck-cards"></div>
+        <form id="truck-form" class="truck-form">
+          <label>Altura (m)<input name="height" type="number" step="0.05" min="2" max="5" inputmode="decimal" required></label>
+          <label>Largura (m)<input name="width" type="number" step="0.05" min="1.8" max="3.2" inputmode="decimal" required></label>
+          <label>Comprimento (m)<input name="comprimento" type="number" step="0.1" min="5" max="30" inputmode="decimal" required></label>
+          <label>Peso total (t)<input name="weight" type="number" step="0.5" min="3" max="80" inputmode="decimal" required></label>
+          <label>Eixos<input name="axles" type="number" step="1" min="2" max="9" inputmode="numeric" required></label>
+          <label class="switch inline"><input type="checkbox" name="hazmat"><span></span> Carga perigosa</label>
+          <div class="truck-form-actions">
+            <button type="submit" class="btn btn-primary">Salvar medidas</button>
+            <button type="button" id="truck-reset" class="btn btn-ghost">Restaurar padrão</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- ============ ALERTAS ============ -->
+      <div class="tab-panel" id="tab-alertas" role="tabpanel">
+        <p class="muted small">Pontes baixas, ruas estreitas e outros problemas que você marcou. As próximas rotas desviam deles. Congestionamento vale por 1 hora; obra, por 24 horas.</p>
+        <button id="btn-new-report" class="btn btn-primary btn-block" type="button">⚠️ Reportar problema no mapa</button>
+        <ul id="reports-list" class="reports-list"></ul>
+        <p id="reports-empty" class="empty">Nenhum alerta marcado.</p>
+      </div>
+
+      <!-- ============ AJUSTES ============ -->
+      <div class="tab-panel" id="tab-ajustes" role="tabpanel">
+        <label class="switch"><input type="checkbox" id="opt-voice" checked><span></span> Instruções por voz</label>
+        <label class="switch"><input type="checkbox" id="opt-zmrc" checked><span></span> Mostrar a ZMRC (restrição em SP) no mapa</label>
+
+        <div class="field-label">Trânsito ao vivo no mapa (opcional)</div>
+        <p class="muted small">O Google Maps e o Waze não permitem que outros apps usem os dados de trânsito deles sem um contrato pago. Por isso o botão 🚦 abre o Google Maps já na camada de trânsito. Para ver o trânsito <em>dentro</em> deste app, crie uma chave gratuita em developer.tomtom.com (não pede cartão) e cole aqui.</p>
+        <form id="tomtom-form" class="search-form">
+          <input id="tomtom-key" type="text" placeholder="Chave da TomTom" autocomplete="off" spellcheck="false">
+          <button class="btn btn-ghost" type="submit">Salvar</button>
+        </form>
+
+        <div class="field-label">Sobre este protótipo</div>
+        <ul class="about small muted">
+          <li>Rotas calculadas pelo Valhalla com dados do OpenStreetMap, considerando altura, largura, comprimento, peso e eixos.</li>
+          <li>No Brasil, nem todas as pontes têm a altura cadastrada no mapa. Reporte as que você conhece: o app passa a desviar delas.</li>
+          <li>A área da ZMRC é aproximada. Confira sempre a sinalização e as regras da CET.</li>
+          <li>Os dados ficam salvos só neste celular.</li>
+        </ul>
+        <button id="btn-clear" class="btn btn-danger btn-block" type="button">Apagar todos os dados do app</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Diálogo para reportar problema -->
+  <dialog id="report-dialog" class="dialog">
+    <form method="dialog" id="report-form">
+      <h2>Reportar problema aqui</h2>
+      <p class="muted small" id="report-where"></p>
+      <div id="report-types" class="report-types"></div>
+      <label id="report-value-wrap" hidden>
+        <span id="report-value-label">Valor</span>
+        <input name="value" id="report-value" type="number" step="0.05" min="0" inputmode="decimal">
+        <small class="muted" id="report-value-hint"></small>
+      </label>
+      <label>Observação (opcional)
+        <input name="note" id="report-note" type="text" maxlength="120" placeholder="Ex.: viaduto da linha do trem">
+      </label>
+      <div class="dialog-actions">
+        <button value="cancel" class="btn btn-ghost" type="submit" formnovalidate>Cancelar</button>
+        <button value="ok" class="btn btn-primary" type="submit">Salvar alerta</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  <div id="loading" class="loading" hidden><div class="spinner"></div><span id="loading-text">Calculando…</span></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/geo.js"></script>
+  <script src="js/reports.js"></script>
+  <script src="js/guidance.js"></script>
+  <script src="js/services.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
