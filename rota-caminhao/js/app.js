@@ -1007,39 +1007,69 @@
     destination: { color: '#ea580c', dashArray: '2 7' },
     conditional: { color: '#9333ea', dashArray: '12 6' },
   };
-  const restr = { ways: new Map(), boxes: [], controller: null, timer: null, status: 'idle', count: 0 };
+  const RESTR_CACHE_KEY = 'rotaCaminhao.ruas.v1';
+  const RESTR_CACHE_DAYS = 7;
+  const restr = {
+    ways: new Map(),   // id -> { id, tags, shape }
+    cells: new Map(),  // bloco -> data da busca
+    inFlight: false, pending: false, timer: null, error: null, retryAt: 0, count: 0,
+  };
 
   const boxOf = (b) => [b.getSouth(), b.getWest(), b.getNorth(), b.getEast()];
-  const boxContains = (o, i) => o[0] <= i[0] && o[1] <= i[1] && o[2] >= i[2] && o[3] >= i[3];
+
+  function loadRestrCache() {
+    try {
+      const c = JSON.parse(localStorage.getItem(RESTR_CACHE_KEY) || '{}');
+      const now = Date.now();
+      for (const [k, ts] of Object.entries(c.cells || {})) if (now - ts < RESTR_CACHE_DAYS * 864e5) restr.cells.set(k, ts);
+      for (const w of c.ways || []) restr.ways.set(w.id, w);
+    } catch (_) { /* sem cache */ }
+  }
+
+  function saveRestrCache() {
+    if (restr.ways.size > 20000) { restr.ways.clear(); restr.cells.clear(); }
+    try {
+      localStorage.setItem(RESTR_CACHE_KEY, JSON.stringify({ cells: Object.fromEntries(restr.cells), ways: [...restr.ways.values()] }));
+    } catch (_) {
+      try { localStorage.removeItem(RESTR_CACHE_KEY); } catch (__) { /* ignora */ }
+    }
+  }
 
   function scheduleRestrictions() {
     clearTimeout(restr.timer);
-    restr.timer = setTimeout(loadRestrictions, 700);
+    restr.timer = setTimeout(loadRestrictions, 600);
   }
 
-  async function loadRestrictions() {
-    if (!state.options.showRestrictions) { renderRestrictions(); return; }
-    if (map.getZoom() < cfg.restrictionsMinZoom) { renderRestrictions(); return; }
-    const view = boxOf(map.getBounds());
-    if (restr.boxes.some((b) => boxContains(b, view))) { renderRestrictions(); return; }
-    const box = boxOf(map.getBounds().pad(0.3));
-    if (restr.controller) restr.controller.abort();
-    const ctrl = new AbortController();
-    restr.controller = ctrl;
-    restr.status = 'loading';
+  /**
+   * Busca só os blocos da tela que ainda não foram buscados. Uma busca por vez:
+   * mexer no mapa durante a busca não cancela nada, só agenda a próxima.
+   */
+  async function loadRestrictions(force) {
+    if (!state.options.showRestrictions || map.getZoom() < cfg.restrictionsMinZoom) { renderRestrictions(); return; }
+    if (restr.inFlight) { restr.pending = true; return; }
+    if (!force && restr.error && Date.now() < restr.retryAt) { renderRestrictions(); return; }
+    const missing = RC.restrictions.cellsForBox(boxOf(map.getBounds().pad(0.1))).filter((c) => !restr.cells.has(c.key));
+    if (!missing.length || missing.length > 60) { restr.error = null; renderRestrictions(); return; }
+
+    restr.inFlight = true;
+    restr.error = null;
     updateRestrPill();
     try {
-      const ways = await svc.restrictedWays(box, ctrl.signal);
-      if (restr.ways.size > 15000) { restr.ways.clear(); restr.boxes = []; }
+      const ways = await svc.restrictedWays(RC.restrictions.boxForCells(missing));
+      const now = Date.now();
       for (const w of ways) restr.ways.set(w.id, w);
-      restr.boxes.push(box);
-      restr.status = 'ok';
+      for (const c of missing) restr.cells.set(c.key, now);
+      saveRestrCache();
     } catch (err) {
-      if (err.name === 'AbortError') return;
-      restr.status = 'error';
+      restr.error = errMsg(err);
+      restr.retryAt = Date.now() + 30000; // não insiste a cada movimento do mapa
     }
-    if (restr.controller === ctrl) restr.controller = null;
+    restr.inFlight = false;
     renderRestrictions();
+    if (restr.pending) {
+      restr.pending = false;
+      if (!restr.error) loadRestrictions();
+    }
   }
 
   /** Redesenha as ruas proibidas para o caminhão atual (sem nova consulta). */
@@ -1071,19 +1101,20 @@
     if (!state.options.showRestrictions) { pill.hidden = true; $('#restr-legend').hidden = true; return; }
     pill.hidden = false;
     const name = truck().nome;
+    const zoomedOut = map.getZoom() < cfg.restrictionsMinZoom;
     let text;
     let info = true;
-    if (restr.status === 'loading') text = 'Buscando ruas proibidas…';
-    else if (map.getZoom() < cfg.restrictionsMinZoom && !restr.count) text = 'Aproxime o mapa para ver as ruas proibidas';
-    else if (restr.status === 'error') text = 'Ruas proibidas indisponíveis · tocar p/ tentar';
+    if (restr.inFlight) text = 'Buscando ruas proibidas…';
     else if (restr.count) { text = `${restr.count} rua${restr.count > 1 ? 's' : ''} com restrição p/ ${name}`; info = false; }
-    else text = `Nenhuma rua proibida p/ ${name} aqui`;
+    else if (zoomedOut) text = 'Aproxime o mapa para ver as ruas proibidas';
+    else if (restr.error) text = `${restr.error} Toque para tentar de novo.`;
+    else text = `Nenhuma rua proibida p/ ${name} nesta área`;
     $('#restr-text').textContent = text;
     pill.classList.toggle('info', info);
   }
 
   $('#restr-pill').addEventListener('click', () => {
-    if (restr.status === 'error') { restr.status = 'idle'; loadRestrictions(); return; }
+    if (restr.error && !restr.inFlight) { loadRestrictions(true); return; }
     const lg = $('#restr-legend');
     lg.hidden = !lg.hidden;
     $('#restr-pill').setAttribute('aria-expanded', String(!lg.hidden));
@@ -1135,6 +1166,7 @@
   const pts = [state.origin, ...state.stops].filter(Boolean).map((p) => [p.lat, p.lon]);
   if (pts.length > 1) fitTo(pts);
   else if (pts.length === 1) map.setView(pts[0], 14);
+  loadRestrCache();
   updateRestrPill();
   scheduleRestrictions();
 

@@ -13,7 +13,7 @@ Site para celular que calcula rotas **para caminhão** (toco, truck e carreta) n
 
 ## Ruas proibidas no mapa
 
-Assim que o motorista escolhe o caminhão, o mapa mostra **tracejadas** as ruas onde ele não passa (aproxime o mapa até o nível de bairro):
+Assim que o motorista escolhe o caminhão, o mapa mostra **tracejadas** as ruas onde ele não passa (aproxime o mapa até ver os nomes das ruas):
 
 | Linha | Significado |
 |---|---|
@@ -22,7 +22,7 @@ Assim que o motorista escolhe o caminhão, o mapa mostra **tracejadas** as ruas 
 | roxa tracejada | proibida em alguns horários |
 | vinho tracejada | trecho reportado por um motorista (ex.: curva fechada) |
 
-Ao trocar de caminhão, o mapa se atualiza na hora. Toque numa rua tracejada para ver o motivo, por exemplo "Altura máx. 4,3 m (seu caminhão: 4,4 m)". Os dados vêm das marcações do OpenStreetMap, consultadas pelo serviço Overpass. Curvas fechadas raramente estão cadastradas no mapa, então quando um motorista reporta "rua estreita / curva fechada", "proibido", "limite de peso" ou "obra", o app liga o alerta ao trecho da rua mais próxima e o desenha tracejado.
+O app busca o mapa em blocos de cerca de 2 km, uma busca por vez, com limite de 25 segundos por servidor. Os blocos já buscados ficam salvos no celular por 7 dias. Ao trocar de caminhão, o mapa se atualiza na hora. Toque numa rua tracejada para ver o motivo, por exemplo "Altura máx. 4,3 m (seu caminhão: 4,4 m)". Os dados vêm das marcações do OpenStreetMap, consultadas pelo serviço Overpass. Curvas fechadas raramente estão cadastradas no mapa, então quando um motorista reporta "rua estreita / curva fechada", "proibido", "limite de peso" ou "obra", o app liga o alerta ao trecho da rua mais próxima e o desenha tracejado.
 
 ## Trânsito
 

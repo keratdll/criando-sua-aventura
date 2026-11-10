@@ -225,36 +225,41 @@
 
   /* -------------------- Ruas com restrição (Overpass/OSM) -------------------- */
 
-  async function overpass(query, signal) {
+  /**
+   * Consulta Overpass com limite de tempo por servidor; se um falhar ou
+   * demorar, tenta o próximo. Nunca fica esperando para sempre.
+   */
+  async function overpass(query, timeoutMs = 25000) {
     let lastErr;
     for (const url of cfg.overpassUrls) {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), timeoutMs);
       try {
-        const res = await fetch(url, {
-          method: 'POST',
-          body: new URLSearchParams({ data: query }),
-          signal,
-        });
+        const res = await fetch(url, { method: 'POST', body: new URLSearchParams({ data: query }), signal: ctrl.signal });
         if (res.ok) return await res.json();
-        lastErr = new ServiceError(res.status === 429
-          ? 'Servidor do mapa ocupado. Tente de novo em instantes.'
-          : 'Não foi possível carregar as ruas restritas.');
+        lastErr = new ServiceError(res.status === 429 || res.status === 504
+          ? 'Servidor do mapa ocupado agora.'
+          : 'Servidor do mapa indisponível agora.');
       } catch (err) {
-        if (err.name === 'AbortError') throw err;
-        lastErr = new ServiceError('Sem conexão para carregar as ruas restritas.', err);
+        lastErr = new ServiceError(err.name === 'AbortError'
+          ? 'O servidor do mapa demorou demais.'
+          : 'Sem conexão com o servidor do mapa.', err);
+      } finally {
+        clearTimeout(timer);
       }
     }
     throw lastErr;
   }
 
   /** Ruas com marcações de restrição dentro da área [sul, oeste, norte, leste]. */
-  async function restrictedWays(box, signal) {
-    const json = await overpass(RC.restrictions.overpassQuery(...box), signal);
+  async function restrictedWays(box) {
+    const json = await overpass(RC.restrictions.overpassQuery(...box));
     return RC.restrictions.parseOverpass(json);
   }
 
   /** Ruas a até `radius` metros do ponto. */
   async function waysAround(lat, lon, radius) {
-    const json = await overpass(RC.restrictions.overpassAroundQuery(lat, lon, radius));
+    const json = await overpass(RC.restrictions.overpassAroundQuery(lat, lon, radius), 15000);
     return RC.restrictions.parseOverpass(json);
   }
 

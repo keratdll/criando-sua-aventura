@@ -75,13 +75,39 @@
     return null;
   }
 
-  /** Consulta Overpass com as ruas que têm alguma marcação de restrição na área. */
+  // Marcações que interessam ao caminhão.
+  const TAG_KEYS = ['maxheight', 'maxheight:physical', 'maxwidth', 'maxwidth:physical', 'maxlength', 'maxlength:hgv',
+    'maxweight', 'maxweight:hgv', 'maxaxleload', 'hgv', 'hgv:conditional', 'maxweight:conditional', 'maxlength:conditional', 'hazmat'];
+
+  /** Consulta Overpass (uma única passada) das ruas com alguma dessas marcações na área. */
   function overpassQuery(south, west, north, east) {
     const bb = [south, west, north, east].map((v) => v.toFixed(5)).join(',');
-    const hw = `[highway~"^(${ROAD_TYPES})$"]`;
-    const keys = ['maxheight', 'maxheight:physical', 'maxwidth', 'maxlength', 'maxweight', 'maxweight:hgv', 'maxaxleload', 'hgv', 'hgv:conditional', 'maxweight:conditional'];
-    const parts = keys.map((k) => `way${hw}["${k}"](${bb});`).join('');
-    return `[out:json][timeout:25];(${parts});out tags geom qt;`;
+    const keys = TAG_KEYS.join('|');
+    return `[out:json][timeout:25];way[highway~"^(${ROAD_TYPES})$"][~"^(${keys})$"~"."](${bb});out tags geom qt;`;
+  }
+
+  /* Blocos fixos de ~2 km: o app só busca os blocos que ainda não tem. */
+  const CELL = 0.02;
+  const cellKey = (i, j) => `${i}:${j}`;
+
+  /** Blocos que cobrem a área [sul, oeste, norte, leste]. */
+  function cellsForBox(box) {
+    const [s, w, n, e] = box;
+    const out = [];
+    for (let i = Math.floor(s / CELL); i <= Math.floor(n / CELL); i++) {
+      for (let j = Math.floor(w / CELL); j <= Math.floor(e / CELL); j++) out.push({ i, j, key: cellKey(i, j) });
+    }
+    return out;
+  }
+
+  /** Área [sul, oeste, norte, leste] que cobre os blocos dados. */
+  function boxForCells(cells) {
+    let s = Infinity, w = Infinity, n = -Infinity, e = -Infinity;
+    for (const c of cells) {
+      s = Math.min(s, c.i * CELL); n = Math.max(n, (c.i + 1) * CELL);
+      w = Math.min(w, c.j * CELL); e = Math.max(e, (c.j + 1) * CELL);
+    }
+    return [s, w, n, e];
   }
 
   /** Consulta das ruas próximas de um ponto (para ligar um alerta à rua). */
@@ -127,5 +153,5 @@
     return { street: t.name || t.ref || '', shape: out.map(([a, b]) => [Math.round(a * 1e6) / 1e6, Math.round(b * 1e6) / 1e6]) };
   }
 
-  return { parseMeters, parseTonnes, evaluate, overpassQuery, overpassAroundQuery, parseOverpass, nearestWaySegment, ROAD_TYPES };
+  return { parseMeters, parseTonnes, evaluate, overpassQuery, overpassAroundQuery, parseOverpass, nearestWaySegment, cellsForBox, boxForCells, ROAD_TYPES, TAG_KEYS, CELL };
 });

@@ -47,7 +47,7 @@ test('limite de peso e proibição de caminhões', () => {
 test('consulta Overpass inclui a área e as marcações', () => {
   const q = R.overpassQuery(-23.56, -46.66, -23.53, -46.62);
   assert.match(q, /\(-23\.56000,-46\.66000,-23\.53000,-46\.62000\)/);
-  for (const k of ['maxheight', 'maxlength', 'maxweight', 'hgv']) assert.ok(q.includes(`["${k}"]`), k);
+  for (const k of ['maxheight', 'maxlength', 'maxweight', 'hgv']) assert.ok(q.includes(k), k);
 });
 
 test('converte resposta do Overpass e acha o trecho da rua mais próxima', () => {
@@ -64,4 +64,21 @@ test('converte resposta do Overpass e acha o trecho da rua mais próxima', () =>
   assert.equal(seg.street, 'Rua A');
   assert.ok(seg.shape.length >= 2);
   assert.equal(R.nearestWaySegment(ways, [-23.505, -46.595], 120, 40), null, 'longe das duas ruas');
+});
+
+test('blocos de ~2 km: cobre a área e só busca o que falta', () => {
+  const cells = R.cellsForBox([-23.535, -46.645, -23.515, -46.625]);
+  assert.ok(cells.length >= 1 && cells.length <= 4, cells.length);
+  const box = R.boxForCells(cells);
+  assert.ok(box[0] <= -23.535 && box[2] >= -23.515 && box[1] <= -46.645 && box[3] >= -46.625, JSON.stringify(box));
+  // mesma área deslocada um pouco usa os mesmos blocos
+  const again = R.cellsForBox([-23.534, -46.644, -23.516, -46.626]).map((c) => c.key);
+  assert.ok(again.every((k) => cells.some((c) => c.key === k)));
+});
+
+test('consulta única com as marcações e sem escapes', () => {
+  const q = R.overpassQuery(-23.56, -46.66, -23.53, -46.62);
+  assert.ok(q.includes('maxheight|maxheight:physical'));
+  assert.ok(!q.includes('\\'));
+  assert.equal((q.match(/way\[/g) || []).length, 1);
 });
