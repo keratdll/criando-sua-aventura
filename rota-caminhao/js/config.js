@@ -8,6 +8,10 @@
     valhallaUrl: 'https://valhalla1.openstreetmap.de',
     nominatimUrl: 'https://nominatim.openstreetmap.org',
     viacepUrl: 'https://viacep.com.br/ws',
+    // Servidores Overpass (consulta às marcações de ruas do OpenStreetMap); o 2º é reserva.
+    overpassUrls: ['https://overpass-api.de/api/interpreter', 'https://overpass.private.coffee/api/interpreter'],
+    // Zoom mínimo para buscar ruas restritas (evita consultas de áreas muito grandes).
+    restrictionsMinZoom: 13,
 
     // Região Metropolitana de SP + Baixada Santista: [oeste, norte, leste, sul]
     regionViewbox: [-47.25, -23.15, -45.65, -24.35],

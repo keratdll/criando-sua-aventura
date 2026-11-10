@@ -14,7 +14,18 @@
     constructor(message, detail) { super(message); this.detail = detail; }
   }
 
+  /** GET em JSON; em falha de rede tenta mais uma vez (sinal de celular oscila). */
   async function fetchJson(url, timeoutMs = 30000) {
+    try {
+      return await fetchJsonOnce(url, timeoutMs);
+    } catch (err) {
+      if (err.message.startsWith('O serviço demorou')) throw err;
+      await new Promise((r) => setTimeout(r, 1500));
+      return fetchJsonOnce(url, timeoutMs);
+    }
+  }
+
+  async function fetchJsonOnce(url, timeoutMs) {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), timeoutMs);
     try {
@@ -212,5 +223,40 @@
     return `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
   }
 
-  RC.services = { route, optimizeOrder, searchAddress, reverse, ServiceError, CEP_RE };
+  /* -------------------- Ruas com restrição (Overpass/OSM) -------------------- */
+
+  async function overpass(query, signal) {
+    let lastErr;
+    for (const url of cfg.overpassUrls) {
+      try {
+        const res = await fetch(url, {
+          method: 'POST',
+          body: new URLSearchParams({ data: query }),
+          signal,
+        });
+        if (res.ok) return await res.json();
+        lastErr = new ServiceError(res.status === 429
+          ? 'Servidor do mapa ocupado. Tente de novo em instantes.'
+          : 'Não foi possível carregar as ruas restritas.');
+      } catch (err) {
+        if (err.name === 'AbortError') throw err;
+        lastErr = new ServiceError('Sem conexão para carregar as ruas restritas.', err);
+      }
+    }
+    throw lastErr;
+  }
+
+  /** Ruas com marcações de restrição dentro da área [sul, oeste, norte, leste]. */
+  async function restrictedWays(box, signal) {
+    const json = await overpass(RC.restrictions.overpassQuery(...box), signal);
+    return RC.restrictions.parseOverpass(json);
+  }
+
+  /** Ruas a até `radius` metros do ponto. */
+  async function waysAround(lat, lon, radius) {
+    const json = await overpass(RC.restrictions.overpassAroundQuery(lat, lon, radius));
+    return RC.restrictions.parseOverpass(json);
+  }
+
+  RC.services = { route, optimizeOrder, searchAddress, reverse, restrictedWays, waysAround, ServiceError, CEP_RE };
 })(typeof self !== 'undefined' ? self : this);

@@ -11,6 +11,19 @@ Site para celular que calcula rotas **para caminhão** (toco, truck e carreta) n
 5. **Toca em ▶ Iniciar**. O app segue o GPS, mostra a próxima manobra, fala as instruções e recalcula quando o motorista sai da rota. Ao chegar, toca em **✓ Entregue** e segue para a próxima entrega.
 6. **Reporta problemas** (ponte baixa, rua estreita, proibido para caminhão, limite de peso, obra, congestionamento). As próximas rotas desviam desses pontos. Uma ponte reportada com "altura livre 4,1 m" só desvia caminhões mais altos que isso.
 
+## Ruas proibidas no mapa
+
+Assim que o motorista escolhe o caminhão, o mapa mostra **tracejadas** as ruas onde ele não passa (aproxime o mapa até o nível de bairro):
+
+| Linha | Significado |
+|---|---|
+| vermelha tracejada | proibida para este caminhão (altura, largura, comprimento, peso, peso por eixo, proibição de caminhões ou de carga perigosa) |
+| laranja pontilhada | caminhão só para carga e descarga naquela rua |
+| roxa tracejada | proibida em alguns horários |
+| vinho tracejada | trecho reportado por um motorista (ex.: curva fechada) |
+
+Ao trocar de caminhão, o mapa se atualiza na hora. Toque numa rua tracejada para ver o motivo, por exemplo "Altura máx. 4,3 m (seu caminhão: 4,4 m)". Os dados vêm das marcações do OpenStreetMap, consultadas pelo serviço Overpass. Curvas fechadas raramente estão cadastradas no mapa, então quando um motorista reporta "rua estreita / curva fechada", "proibido", "limite de peso" ou "obra", o app liga o alerta ao trecho da rua mais próxima e o desenha tracejado.
+
 ## Trânsito
 
 O Google Maps e o Waze **não liberam** os dados de trânsito para outros apps sem contrato pago. A API de rotas do Google é paga, e os dados do Waze só saem por parceria. Por isso o protótipo:
@@ -39,6 +52,7 @@ O Google Maps e o Waze **não liberam** os dados de trânsito para outros apps s
 | `js/geo.js` | Cálculos geográficos (distâncias, polígonos, decodificação de rota) |
 | `js/reports.js` | Regras dos alertas: quando valem, para qual caminhão e como viram áreas a evitar |
 | `js/guidance.js` | Navegação: próxima manobra, distância e detecção de saída da rota |
+| `js/restrictions.js` | Ruas proibidas: leitura das marcações do OSM e regra por caminhão |
 | `js/app.js` | Interface, mapa (Leaflet) e fluxo do motorista |
 
 Testes da lógica: `node --test tests/*.test.js`

@@ -348,3 +348,28 @@ body.navigating .topbar { top: calc(110px + var(--safe-top)); justify-content: f
   :root:not([data-theme="light"]) .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(.9) contrast(.9); }
 }
 :root[data-theme="dark"] .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(.9) contrast(.9); }
+
+/* ---------- Ruas proibidas: aviso e legenda ---------- */
+.topbar-left { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; min-width: 0; }
+.restr-pill {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 12px; border: 0; border-radius: 999px;
+  background: var(--surface); box-shadow: var(--shadow); font-size: 14px; font-weight: 600; cursor: pointer;
+  max-width: 70vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.restr-pill.info { color: var(--muted); font-weight: 500; }
+.restr-line, .leg {
+  display: inline-block; width: 26px; height: 0; border-top: 4px dashed #dc2626; flex: none;
+}
+.restr-pill.info .restr-line { border-top-color: var(--muted); }
+.leg-destination { border-top-color: #ea580c; border-top-style: dotted; }
+.leg-conditional { border-top-color: #9333ea; }
+.leg-reported { border-top-color: #7f1d1d; }
+.restr-legend {
+  background: var(--surface); box-shadow: var(--shadow); border-radius: 14px; padding: 10px 12px; font-size: 14px;
+  display: grid; gap: 6px; max-width: 290px;
+}
+.restr-legend div { display: flex; align-items: center; gap: 10px; }
+.restr-legend small { color: var(--muted); font-size: 12px; }
+body.navigating .restr-pill, body.navigating .restr-legend { display: none !important; }
+.restr-popup strong { display: block; margin-bottom: 4px; }
+.restr-popup ul { margin: 0; padding-left: 18px; }

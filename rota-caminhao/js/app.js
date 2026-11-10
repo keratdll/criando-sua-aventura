@@ -44,7 +44,7 @@
     origin: null,          // { label, lat, lon, isGps }
     stops: [],             // { id, label, lat, lon, done }
     reports: [],           // { id, type, lat, lon, value, note, createdAt }
-    options: { returnToOrigin: false, avoidTolls: false, voice: true, showZmrc: true, tomtomKey: '' },
+    options: { returnToOrigin: false, avoidTolls: false, voice: true, showZmrc: true, showRestrictions: true, tomtomKey: '' },
     // não persistidos:
     trips: [], selected: 0, routePoints: [], etas: {}, skippedReports: 0,
     mapMode: null,
@@ -84,6 +84,8 @@
     attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> · rotas © Valhalla',
   }).addTo(map);
   map.createPane('traffic').style.zIndex = 350;
+  map.createPane('restrictions').style.zIndex = 390; // abaixo da rota (400)
+  const restrRenderer = L.canvas({ pane: 'restrictions', padding: 0.3 });
 
   const layers = {
     zmrc: L.polygon(cfg.zmrc.polygon, {
@@ -94,6 +96,7 @@
     stops: L.layerGroup().addTo(map),
     me: null,
     traffic: null,
+    restrictions: L.layerGroup().addTo(map),
   };
 
   function cssVar(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
@@ -169,7 +172,7 @@
     const card = e.target.closest('.truck-card');
     if (!card) return;
     state.truckId = card.dataset.id;
-    save(); renderTruck(); renderReports(); routeInvalidated();
+    save(); renderTruck(); renderReports(); renderRestrictions(); routeInvalidated();
     toast(`Caminhão: ${truck().nome}`);
   });
 
@@ -183,13 +186,13 @@
       t[k] = k === 'axles' ? Math.round(v) : v;
     }
     t.hazmat = f.elements.hazmat.checked;
-    save(); renderTruck(); renderReports(); routeInvalidated();
+    save(); renderTruck(); renderReports(); renderRestrictions(); routeInvalidated();
     toast('Medidas salvas.');
   });
 
   $('#truck-reset').addEventListener('click', () => {
     state.trucks[state.truckId] = { ...cfg.truckPresets[state.truckId] };
-    save(); renderTruck(); routeInvalidated();
+    save(); renderTruck(); renderReports(); renderRestrictions(); routeInvalidated();
   });
 
   $('#truck-chip').addEventListener('click', () => { showTab('caminhao'); if (sheet.dataset.state === 'collapsed') setSheet('half'); });
@@ -632,7 +635,20 @@
   $('#btn-mark-jam').addEventListener('click', () => setMapMode('jam', 'Toque no local do congestionamento'));
   $('#btn-new-report').addEventListener('click', () => setMapMode('report', 'Toque no local do problema'));
 
-  map.on('click', (e) => {
+  map.on('click', (e) => handleMapTap(e));
+
+  /**
+   * Toque numa rua tracejada: no modo "reportar"/"congestionamento" vale como
+   * toque no mapa; fora dele, mostra o motivo da restrição.
+   */
+  function onRestrictedTap(html) {
+    return (e) => {
+      if (state.mapMode) { handleMapTap(e); return; }
+      L.popup().setLatLng(e.latlng).setContent(html).openOn(map);
+    };
+  }
+
+  function handleMapTap(e) {
     if (state.nav.active) return;
     const ll = [e.latlng.lat, e.latlng.lng];
     if (state.mapMode === 'jam') {
@@ -670,7 +686,7 @@
       }
       save(); renderStops();
     });
-  });
+  }
 
   /* ================================= Alertas ================================= */
 
@@ -729,6 +745,13 @@
     for (const r of state.reports) {
       const { t, text } = reportDetails(r);
       const on = rep.isActive(r, cfg.reportTypes) && rep.affectsTruck(r, truck());
+      // Alerta ligado a um trecho de rua: desenha o trecho tracejado.
+      if (on && Array.isArray(r.geometry) && r.geometry.length > 1) {
+        const popup = `<div class="restr-popup"><strong>${esc(r.street || 'Trecho reportado')}</strong><ul><li>${esc(t.label)}</li><li>${esc(text)}</li></ul><small>Reportado por motorista</small></div>`;
+        L.polyline(r.geometry, { renderer: restrRenderer, color: '#ffffff', weight: 9, opacity: 0.6, interactive: false }).addTo(layers.reports);
+        L.polyline(r.geometry, { renderer: restrRenderer, color: '#7f1d1d', weight: 6, dashArray: '8 7', lineCap: 'butt', bubblingMouseEvents: false })
+          .on('click', onRestrictedTap(popup)).addTo(layers.reports);
+      }
       L.marker([r.lat, r.lon], {
         icon: L.divIcon({ className: '', html: `<div class="report-pin ${on ? '' : 'off'}">${t.icon}</div>`, iconSize: [30, 30], iconAnchor: [15, 15] }),
         title: t.label,
@@ -752,6 +775,23 @@
       if (state.trips.length) routeInvalidated();
     }
   });
+
+  // Tipos de alerta que valem para um trecho de rua (desenhado tracejado).
+  const STREET_REPORTS = ['rua_estreita', 'proibido', 'peso', 'obra'];
+
+  /** Liga o alerta à rua mais próxima para desenhar o trecho no mapa. */
+  async function attachStreet(report) {
+    try {
+      const ways = await svc.waysAround(report.lat, report.lon, 35);
+      const seg = RC.restrictions.nearestWaySegment(ways, [report.lat, report.lon], 120, 40);
+      if (!seg) return;
+      const r = state.reports.find((x) => x.id === report.id);
+      if (!r) return;
+      r.geometry = seg.shape;
+      r.street = seg.street;
+      save(); renderReports();
+    } catch (_) { /* sem conexão: o alerta fica só como ponto */ }
+  }
 
   const dialog = $('#report-dialog');
   let dialogLatLng = null;
@@ -788,8 +828,9 @@
     const type = dialog.querySelector('input[name="rtype"]:checked').value;
     const raw = String($('#report-value').value).replace(',', '.');
     const value = raw && Number(raw) > 0 ? Number(raw) : '';
-    addReport({ type, lat: dialogLatLng[0], lon: dialogLatLng[1], value, note: $('#report-note').value.trim() });
+    const report = addReport({ type, lat: dialogLatLng[0], lon: dialogLatLng[1], value, note: $('#report-note').value.trim() });
     toast('Alerta salvo. As próximas rotas vão desviar deste ponto.');
+    if (STREET_REPORTS.includes(type)) attachStreet(report);
     if (state.trips.length) calculate({ keepView: true });
   });
 
@@ -959,6 +1000,97 @@
 
   map.on('dragstart', () => { if (state.nav.active) state.nav.userPanned = true; });
 
+  /* ========================= Ruas proibidas no mapa ========================= */
+
+  const RESTR_STYLES = {
+    blocked: { color: '#dc2626', dashArray: '8 7' },
+    destination: { color: '#ea580c', dashArray: '2 7' },
+    conditional: { color: '#9333ea', dashArray: '12 6' },
+  };
+  const restr = { ways: new Map(), boxes: [], controller: null, timer: null, status: 'idle', count: 0 };
+
+  const boxOf = (b) => [b.getSouth(), b.getWest(), b.getNorth(), b.getEast()];
+  const boxContains = (o, i) => o[0] <= i[0] && o[1] <= i[1] && o[2] >= i[2] && o[3] >= i[3];
+
+  function scheduleRestrictions() {
+    clearTimeout(restr.timer);
+    restr.timer = setTimeout(loadRestrictions, 700);
+  }
+
+  async function loadRestrictions() {
+    if (!state.options.showRestrictions) { renderRestrictions(); return; }
+    if (map.getZoom() < cfg.restrictionsMinZoom) { renderRestrictions(); return; }
+    const view = boxOf(map.getBounds());
+    if (restr.boxes.some((b) => boxContains(b, view))) { renderRestrictions(); return; }
+    const box = boxOf(map.getBounds().pad(0.3));
+    if (restr.controller) restr.controller.abort();
+    const ctrl = new AbortController();
+    restr.controller = ctrl;
+    restr.status = 'loading';
+    updateRestrPill();
+    try {
+      const ways = await svc.restrictedWays(box, ctrl.signal);
+      if (restr.ways.size > 15000) { restr.ways.clear(); restr.boxes = []; }
+      for (const w of ways) restr.ways.set(w.id, w);
+      restr.boxes.push(box);
+      restr.status = 'ok';
+    } catch (err) {
+      if (err.name === 'AbortError') return;
+      restr.status = 'error';
+    }
+    if (restr.controller === ctrl) restr.controller = null;
+    renderRestrictions();
+  }
+
+  /** Redesenha as ruas proibidas para o caminhão atual (sem nova consulta). */
+  function renderRestrictions() {
+    layers.restrictions.clearLayers();
+    restr.count = 0;
+    if (state.options.showRestrictions) {
+      const t = truck();
+      const view = map.getBounds().pad(0.05);
+      for (const w of restr.ways.values()) {
+        const ev = RC.restrictions.evaluate(w.tags, t);
+        if (!ev) continue;
+        const st = RESTR_STYLES[ev.status];
+        const name = w.tags.name || w.tags.ref || 'Rua sem nome';
+        const label = { blocked: `Proibida para ${t.nome}`, destination: 'Só carga e descarga', conditional: 'Proibida em alguns horários' }[ev.status];
+        const popup = `<div class="restr-popup"><strong>${esc(name)}</strong><span style="color:${st.color};font-weight:700">${esc(label)}</span><ul>${ev.reasons.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>`;
+        L.polyline(w.shape, { renderer: restrRenderer, color: '#ffffff', weight: 8, opacity: 0.55, interactive: false }).addTo(layers.restrictions);
+        const line = L.polyline(w.shape, {
+          renderer: restrRenderer, color: st.color, weight: 5, dashArray: st.dashArray, lineCap: 'butt', opacity: 0.95, bubblingMouseEvents: false,
+        }).on('click', onRestrictedTap(popup)).addTo(layers.restrictions);
+        if (view.intersects(line.getBounds())) restr.count++;
+      }
+    }
+    updateRestrPill();
+  }
+
+  function updateRestrPill() {
+    const pill = $('#restr-pill');
+    if (!state.options.showRestrictions) { pill.hidden = true; $('#restr-legend').hidden = true; return; }
+    pill.hidden = false;
+    const name = truck().nome;
+    let text;
+    let info = true;
+    if (restr.status === 'loading') text = 'Buscando ruas proibidas…';
+    else if (map.getZoom() < cfg.restrictionsMinZoom && !restr.count) text = 'Aproxime o mapa para ver as ruas proibidas';
+    else if (restr.status === 'error') text = 'Ruas proibidas indisponíveis · tocar p/ tentar';
+    else if (restr.count) { text = `${restr.count} rua${restr.count > 1 ? 's' : ''} com restrição p/ ${name}`; info = false; }
+    else text = `Nenhuma rua proibida p/ ${name} aqui`;
+    $('#restr-text').textContent = text;
+    pill.classList.toggle('info', info);
+  }
+
+  $('#restr-pill').addEventListener('click', () => {
+    if (restr.status === 'error') { restr.status = 'idle'; loadRestrictions(); return; }
+    const lg = $('#restr-legend');
+    lg.hidden = !lg.hidden;
+    $('#restr-pill').setAttribute('aria-expanded', String(!lg.hidden));
+  });
+
+  map.on('moveend', scheduleRestrictions);
+
   /* ================================= Ajustes ================================= */
 
   function renderSettings() {
@@ -966,10 +1098,16 @@
     $('#opt-tolls').checked = state.options.avoidTolls;
     $('#opt-voice').checked = state.options.voice;
     $('#opt-zmrc').checked = state.options.showZmrc;
+    $('#opt-restr').checked = state.options.showRestrictions;
     $('#tomtom-key').value = state.options.tomtomKey || '';
     if (state.options.showZmrc) layers.zmrc.addTo(map); else layers.zmrc.remove();
   }
 
+  $('#opt-restr').addEventListener('change', (e) => {
+    state.options.showRestrictions = e.target.checked;
+    save();
+    if (e.target.checked) loadRestrictions(); else renderRestrictions();
+  });
   $('#opt-voice').addEventListener('change', (e) => { state.options.voice = e.target.checked; save(); });
   $('#opt-zmrc').addEventListener('change', (e) => { state.options.showZmrc = e.target.checked; save(); renderSettings(); });
   $('#tomtom-form').addEventListener('submit', (e) => {
@@ -997,7 +1135,9 @@
   const pts = [state.origin, ...state.stops].filter(Boolean).map((p) => [p.lat, p.lon]);
   if (pts.length > 1) fitTo(pts);
   else if (pts.length === 1) map.setView(pts[0], 14);
+  updateRestrPill();
+  scheduleRestrictions();
 
   // Expõe para depuração/testes.
-  window.RC.app = { state, calculate, startNav, stopNav, addStop, setOrigin, addReport };
+  window.RC.app = { state, map, calculate, startNav, stopNav, addStop, setOrigin, addReport };
 })();
