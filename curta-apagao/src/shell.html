@@ -1,0 +1,111 @@
+<title>O Apagão que Parou o Brasil</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@600;700;800&display=swap">
+<style>
+/* Layout: sala de cinema vertical — tela 9:16 ao centro, controles logo abaixo, capítulos em fila */
+:root {
+  --bg: #0B1430; --panel: #14213D; --panel2: #1E3163; --fg: #F2F5FF; --muted: #A9B6D6;
+  --accent: #FFC93C; --teal: #22B5A8; --red: #E63946;
+  --f-display: "Baloo 2", "Nunito", system-ui, sans-serif; --f-ui: "Nunito", system-ui, sans-serif;
+  color-scheme: dark;
+}
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--fg); font-family: var(--f-ui); margin: 0; }
+.app { min-height: 100%; display: flex; flex-direction: column; align-items: center; gap: 12px;
+  padding-block: 12px 20px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); box-sizing: border-box; }
+.stage { position: relative; aspect-ratio: 9 / 16; height: min(calc(100dvh - 150px), calc((100vw - 32px) * 16 / 9)); max-width: 100%; min-height: 360px;
+  border-radius: 18px; overflow: hidden; background: #050A1A; box-shadow: 0 20px 60px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.06); }
+.stage:fullscreen { border-radius: 0; height: 100dvh; }
+canvas { width: 100%; height: 100%; display: block; }
+.overlay { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 14px; padding: 24px 22px 28px; text-align: center;
+  background: linear-gradient(180deg, rgba(11,20,48,0) 58%, rgba(11,20,48,.94) 80%); }
+.overlay h2 { font-family: var(--f-display); font-size: clamp(22px, 4.6vh, 34px); line-height: 1.05; margin: 0; text-wrap: balance; }
+.overlay p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.45; max-width: 34ch; }
+.big { appearance: none; border: 0; cursor: pointer; font-family: var(--f-display); font-weight: 800; font-size: 22px; color: #14213D; background: var(--accent);
+  padding: 12px 30px 10px; border-radius: 999px; display: inline-flex; align-items: center; gap: 10px; box-shadow: 0 8px 0 #C99A1E, 0 14px 30px rgba(0,0,0,.4); transition: transform .12s; }
+.big:active { transform: translateY(4px); box-shadow: 0 4px 0 #C99A1E; }
+.big:focus-visible, .ctl:focus-visible, .chap:focus-visible, input:focus-visible { outline: 3px solid var(--teal); outline-offset: 3px; }
+.facts { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+.facts span { font-size: 12px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--fg); background: rgba(255,255,255,.1); padding: 4px 10px; border-radius: 99px; }
+.status { font-size: 13px; font-weight: 700; color: var(--muted); min-height: 1.2em; }
+.status.ok { color: #7FE3B4; } .status.err { color: #FF9AA2; }
+.ghost { appearance: none; background: transparent; color: var(--fg); border: 1.5px solid rgba(255,255,255,.35); border-radius: 99px; padding: 8px 16px; font: 700 14px var(--f-ui); cursor: pointer; }
+.spinner { position: absolute; top: 50%; left: 50%; width: 46px; height: 46px; margin: -23px; border-radius: 50%; border: 5px solid rgba(255,255,255,.2); border-top-color: var(--accent); animation: spin 0.9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.controls { width: 100%; max-width: 560px; display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; background: var(--panel); border-radius: 16px; padding: 10px 12px; box-sizing: border-box; }
+.ctl { appearance: none; border: 0; background: rgba(255,255,255,.08); color: var(--fg); width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; cursor: pointer; flex: none; }
+.ctl.on { background: var(--accent); color: #14213D; }
+.ctl svg { width: 20px; height: 20px; }
+.mid { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.time > span { white-space: nowrap; flex: none; }
+.time { font-size: 12px; font-weight: 800; color: var(--muted); font-variant-numeric: tabular-nums; display: flex; justify-content: space-between; gap: 8px; }
+.time b { color: var(--fg); font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.track { position: relative; height: 22px; }
+.track .ticks { position: absolute; left: 0; right: 0; top: 50%; height: 0; pointer-events: none; }
+.track .ticks i { position: absolute; width: 3px; height: 12px; margin-top: -6px; background: rgba(255,255,255,.35); border-radius: 2px; }
+input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; background: transparent; margin: 0; height: 22px; cursor: pointer; }
+input[type=range]::-webkit-slider-runnable-track { height: 6px; border-radius: 6px; background: linear-gradient(to right, var(--accent) var(--p, 0%), rgba(255,255,255,.18) var(--p, 0%)); }
+input[type=range]::-moz-range-track { height: 6px; border-radius: 6px; background: linear-gradient(to right, var(--accent) var(--p, 0%), rgba(255,255,255,.18) var(--p, 0%)); }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; background: #fff; margin-top: -5px; box-shadow: 0 1px 4px rgba(0,0,0,.4); }
+input[type=range]::-moz-range-thumb { width: 16px; height: 16px; border: 0; border-radius: 50%; background: #fff; }
+.right { display: flex; gap: 6px; align-items: center; }
+.vol { width: 70px; }
+.chapters { width: 100%; max-width: 560px; display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: thin; }
+.chap { appearance: none; flex: none; border: 0; cursor: pointer; background: var(--panel); color: var(--muted); border-radius: 12px; padding: 7px 11px; font: 700 12.5px var(--f-ui); text-align: left; line-height: 1.2; }
+.chap b { display: block; color: var(--accent); font-size: 11px; letter-spacing: .06em; }
+.chap.cur { background: var(--panel2); color: var(--fg); box-shadow: inset 0 0 0 2px var(--accent); }
+.note { font-size: 12px; color: var(--muted); max-width: 560px; text-align: center; line-height: 1.45; margin: 0; }
+@media (max-width: 420px) { .vol { display: none; } .controls { gap: 8px; padding: 8px; } .ctl { width: 36px; height: 36px; } }
+@media (prefers-reduced-motion: reduce) { .big { transition: none; } }
+</style>
+
+<div class="app">
+  <div class="stage" id="stage">
+    <canvas id="cv" aria-label="Animação do curta O Apagão que Parou o Brasil"></canvas>
+    <div class="overlay" id="start">
+      <div class="facts"><span>Curta animado</span><span id="durFact">5 min 29 s</span><span>7 cenas</span><span>Vozes em pt-BR</span></div>
+      <p>Uma história sobre fake news na família. Aumente o volume: todas as falas têm voz.</p>
+      <button class="big" id="playBig" type="button"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15l13-7.5z" fill="currentColor"/></svg>Assistir</button>
+      <div class="status" id="aStatus">Carregando o áudio…</div>
+    </div>
+    <div class="overlay" id="endOv" hidden>
+      <h2>Fim!</h2>
+      <p>Pare. Pense. Verifique.</p>
+      <button class="big" id="again" type="button"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5V2L7 6l5 4V7a6 6 0 1 1-6 6H4a8 8 0 1 0 8-8z" fill="currentColor"/></svg>Assistir de novo</button>
+    </div>
+    <div class="overlay" id="errOv" hidden>
+      <h2>O áudio não carregou</h2>
+      <p id="errMsg">Não foi possível tocar o arquivo de áudio neste navegador.</p>
+      <button class="big" id="retry" type="button">Tentar de novo</button>
+      <button class="ghost" id="useTTS" type="button">Usar a voz do navegador</button>
+      <button class="ghost" id="silent" type="button">Assistir só com legendas</button>
+    </div>
+    <div class="spinner" id="spin" hidden></div>
+  </div>
+
+  <div class="controls">
+    <button class="ctl" id="pp" type="button" aria-label="Reproduzir"><svg viewBox="0 0 24 24" id="ppIcon"><path d="M7 4.5v15l13-7.5z" fill="currentColor"/></svg></button>
+    <div class="mid">
+      <div class="time"><b id="sceneName">Abertura</b><span><span id="tCur">0:00</span> / <span id="tDur">5:29</span></span></div>
+      <div class="track"><div class="ticks" id="ticks"></div><input type="range" id="seek" min="0" max="329" step="0.1" value="0" aria-label="Posição do vídeo"></div>
+    </div>
+    <div class="right">
+      <button class="ctl on" id="cc" type="button" aria-label="Legendas" aria-pressed="true"><svg viewBox="0 0 24 24"><rect x="2.5" y="5" width="19" height="14" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M10 10.2a2.2 2.2 0 1 0 0 3.6M17 10.2a2.2 2.2 0 1 0 0 3.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+      <button class="ctl" id="mute" type="button" aria-label="Silenciar"><svg viewBox="0 0 24 24" id="volIcon"><path d="M4 9v6h4l5 4V5L8 9z" fill="currentColor"/><path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+      <input type="range" class="vol" id="vol" min="0" max="1" step="0.05" value="1" aria-label="Volume">
+      <button class="ctl" id="fs" type="button" aria-label="Tela cheia"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button>
+    </div>
+  </div>
+  <nav class="chapters" id="chapters" aria-label="Cenas"></nav>
+  <p class="note">Atalhos: espaço pausa, ← → voltam ou avançam 5 s, C liga as legendas, M silencia.</p>
+</div>
+<audio id="aud" src="trilha.mp3" preload="auto"></audio>
+<script>
+/*__TIMELINE__*/
+</script>
+<script>
+/*__CODE__*/
+</script>

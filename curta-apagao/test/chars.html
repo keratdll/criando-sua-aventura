@@ -1,0 +1,17 @@
+<html><head><link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&display=swap" rel="stylesheet"></head><body style="margin:0;background:#333">
+<canvas id="c" width="1080" height="1920" style="width:540px"></canvas>
+<script src="../timeline.js"></script><script src="../src/core.js"></script><script src="../src/chars.js"></script>
+<script>
+const c=document.getElementById('c').getContext('2d'); c.scale(2,2);
+c.fillStyle='#F6D7A7'; c.fillRect(0,0,540,960);
+const t=1.0;
+person(c,'rafa',{x:80,y:420,t,mood:'scared',pose:'phone',talk:0});
+person(c,'lucia',{x:200,y:420,t,mood:'worried',pose:'cheeks',talk:0.6});
+person(c,'ze',{x:320,y:420,t,mood:'happy',pose:'cart'});
+person(c,'neide',{x:450,y:420,t,mood:'neutral',pose:'type'});
+person(c,'carlos',{x:90,y:800,t,mood:'suspicious',pose:'chin',sit:true});
+person(c,'rafa',{x:200,y:800,t,mood:'relieved',pose:'chest',sit:true});
+veri(c,{x:390,y:800,t,s:0.9,arms:'lupa',talk:0.5});
+avatar(c,'neide',490,560,30,{t});
+avatar(c,'veri',490,640,30,{t});
+</script></body></html>

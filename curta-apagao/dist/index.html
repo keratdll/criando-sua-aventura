@@ -1,0 +1,1944 @@
+<title>O Apagão que Parou o Brasil</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@600;700;800&display=swap">
+<style>
+/* Layout: sala de cinema vertical — tela 9:16 ao centro, controles logo abaixo, capítulos em fila */
+:root {
+  --bg: #0B1430; --panel: #14213D; --panel2: #1E3163; --fg: #F2F5FF; --muted: #A9B6D6;
+  --accent: #FFC93C; --teal: #22B5A8; --red: #E63946;
+  --f-display: "Baloo 2", "Nunito", system-ui, sans-serif; --f-ui: "Nunito", system-ui, sans-serif;
+  color-scheme: dark;
+}
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--fg); font-family: var(--f-ui); margin: 0; }
+.app { min-height: 100%; display: flex; flex-direction: column; align-items: center; gap: 12px;
+  padding-block: 12px 20px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); box-sizing: border-box; }
+.stage { position: relative; aspect-ratio: 9 / 16; height: min(calc(100dvh - 150px), calc((100vw - 32px) * 16 / 9)); max-width: 100%; min-height: 360px;
+  border-radius: 18px; overflow: hidden; background: #050A1A; box-shadow: 0 20px 60px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.06); }
+.stage:fullscreen { border-radius: 0; height: 100dvh; }
+canvas { width: 100%; height: 100%; display: block; }
+.overlay { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 14px; padding: 24px 22px 28px; text-align: center;
+  background: linear-gradient(180deg, rgba(11,20,48,0) 58%, rgba(11,20,48,.94) 80%); }
+.overlay h2 { font-family: var(--f-display); font-size: clamp(22px, 4.6vh, 34px); line-height: 1.05; margin: 0; text-wrap: balance; }
+.overlay p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.45; max-width: 34ch; }
+.big { appearance: none; border: 0; cursor: pointer; font-family: var(--f-display); font-weight: 800; font-size: 22px; color: #14213D; background: var(--accent);
+  padding: 12px 30px 10px; border-radius: 999px; display: inline-flex; align-items: center; gap: 10px; box-shadow: 0 8px 0 #C99A1E, 0 14px 30px rgba(0,0,0,.4); transition: transform .12s; }
+.big:active { transform: translateY(4px); box-shadow: 0 4px 0 #C99A1E; }
+.big:focus-visible, .ctl:focus-visible, .chap:focus-visible, input:focus-visible { outline: 3px solid var(--teal); outline-offset: 3px; }
+.facts { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+.facts span { font-size: 12px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--fg); background: rgba(255,255,255,.1); padding: 4px 10px; border-radius: 99px; }
+.status { font-size: 13px; font-weight: 700; color: var(--muted); min-height: 1.2em; }
+.status.ok { color: #7FE3B4; } .status.err { color: #FF9AA2; }
+.ghost { appearance: none; background: transparent; color: var(--fg); border: 1.5px solid rgba(255,255,255,.35); border-radius: 99px; padding: 8px 16px; font: 700 14px var(--f-ui); cursor: pointer; }
+.spinner { position: absolute; top: 50%; left: 50%; width: 46px; height: 46px; margin: -23px; border-radius: 50%; border: 5px solid rgba(255,255,255,.2); border-top-color: var(--accent); animation: spin 0.9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.controls { width: 100%; max-width: 560px; display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; background: var(--panel); border-radius: 16px; padding: 10px 12px; box-sizing: border-box; }
+.ctl { appearance: none; border: 0; background: rgba(255,255,255,.08); color: var(--fg); width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; cursor: pointer; flex: none; }
+.ctl.on { background: var(--accent); color: #14213D; }
+.ctl svg { width: 20px; height: 20px; }
+.mid { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.time > span { white-space: nowrap; flex: none; }
+.time { font-size: 12px; font-weight: 800; color: var(--muted); font-variant-numeric: tabular-nums; display: flex; justify-content: space-between; gap: 8px; }
+.time b { color: var(--fg); font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.track { position: relative; height: 22px; }
+.track .ticks { position: absolute; left: 0; right: 0; top: 50%; height: 0; pointer-events: none; }
+.track .ticks i { position: absolute; width: 3px; height: 12px; margin-top: -6px; background: rgba(255,255,255,.35); border-radius: 2px; }
+input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; background: transparent; margin: 0; height: 22px; cursor: pointer; }
+input[type=range]::-webkit-slider-runnable-track { height: 6px; border-radius: 6px; background: linear-gradient(to right, var(--accent) var(--p, 0%), rgba(255,255,255,.18) var(--p, 0%)); }
+input[type=range]::-moz-range-track { height: 6px; border-radius: 6px; background: linear-gradient(to right, var(--accent) var(--p, 0%), rgba(255,255,255,.18) var(--p, 0%)); }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; background: #fff; margin-top: -5px; box-shadow: 0 1px 4px rgba(0,0,0,.4); }
+input[type=range]::-moz-range-thumb { width: 16px; height: 16px; border: 0; border-radius: 50%; background: #fff; }
+.right { display: flex; gap: 6px; align-items: center; }
+.vol { width: 70px; }
+.chapters { width: 100%; max-width: 560px; display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: thin; }
+.chap { appearance: none; flex: none; border: 0; cursor: pointer; background: var(--panel); color: var(--muted); border-radius: 12px; padding: 7px 11px; font: 700 12.5px var(--f-ui); text-align: left; line-height: 1.2; }
+.chap b { display: block; color: var(--accent); font-size: 11px; letter-spacing: .06em; }
+.chap.cur { background: var(--panel2); color: var(--fg); box-shadow: inset 0 0 0 2px var(--accent); }
+.note { font-size: 12px; color: var(--muted); max-width: 560px; text-align: center; line-height: 1.45; margin: 0; }
+@media (max-width: 420px) { .vol { display: none; } .controls { gap: 8px; padding: 8px; } .ctl { width: 36px; height: 36px; } }
+@media (prefers-reduced-motion: reduce) { .big { transition: none; } }
+</style>
+
+<div class="app">
+  <div class="stage" id="stage">
+    <canvas id="cv" aria-label="Animação do curta O Apagão que Parou o Brasil"></canvas>
+    <div class="overlay" id="start">
+      <div class="facts"><span>Curta animado</span><span id="durFact">5 min 29 s</span><span>7 cenas</span><span>Vozes em pt-BR</span></div>
+      <p>Uma história sobre fake news na família. Aumente o volume: todas as falas têm voz.</p>
+      <button class="big" id="playBig" type="button"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15l13-7.5z" fill="currentColor"/></svg>Assistir</button>
+      <div class="status" id="aStatus">Carregando o áudio…</div>
+    </div>
+    <div class="overlay" id="endOv" hidden>
+      <h2>Fim!</h2>
+      <p>Pare. Pense. Verifique.</p>
+      <button class="big" id="again" type="button"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5V2L7 6l5 4V7a6 6 0 1 1-6 6H4a8 8 0 1 0 8-8z" fill="currentColor"/></svg>Assistir de novo</button>
+    </div>
+    <div class="overlay" id="errOv" hidden>
+      <h2>O áudio não carregou</h2>
+      <p id="errMsg">Não foi possível tocar o arquivo de áudio neste navegador.</p>
+      <button class="big" id="retry" type="button">Tentar de novo</button>
+      <button class="ghost" id="useTTS" type="button">Usar a voz do navegador</button>
+      <button class="ghost" id="silent" type="button">Assistir só com legendas</button>
+    </div>
+    <div class="spinner" id="spin" hidden></div>
+  </div>
+
+  <div class="controls">
+    <button class="ctl" id="pp" type="button" aria-label="Reproduzir"><svg viewBox="0 0 24 24" id="ppIcon"><path d="M7 4.5v15l13-7.5z" fill="currentColor"/></svg></button>
+    <div class="mid">
+      <div class="time"><b id="sceneName">Abertura</b><span><span id="tCur">0:00</span> / <span id="tDur">5:29</span></span></div>
+      <div class="track"><div class="ticks" id="ticks"></div><input type="range" id="seek" min="0" max="329" step="0.1" value="0" aria-label="Posição do vídeo"></div>
+    </div>
+    <div class="right">
+      <button class="ctl on" id="cc" type="button" aria-label="Legendas" aria-pressed="true"><svg viewBox="0 0 24 24"><rect x="2.5" y="5" width="19" height="14" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M10 10.2a2.2 2.2 0 1 0 0 3.6M17 10.2a2.2 2.2 0 1 0 0 3.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+      <button class="ctl" id="mute" type="button" aria-label="Silenciar"><svg viewBox="0 0 24 24" id="volIcon"><path d="M4 9v6h4l5 4V5L8 9z" fill="currentColor"/><path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+      <input type="range" class="vol" id="vol" min="0" max="1" step="0.05" value="1" aria-label="Volume">
+      <button class="ctl" id="fs" type="button" aria-label="Tela cheia"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button>
+    </div>
+  </div>
+  <nav class="chapters" id="chapters" aria-label="Cenas"></nav>
+  <p class="note">Atalhos: espaço pausa, ← → voltam ou avançam 5 s, C liga as legendas, M silencia.</p>
+</div>
+<audio id="aud" src="trilha.mp3" preload="auto"></audio>
+<script>
+window.TL={"dur":328.982,"lines":[{"id":"v0","who":"veri","name":"Veri","text":"Oi! Eu sou o Veri, o narrador desta história. Fica de olho, porque tudo começa com uma simples mensagem...","s":2.2,"e":9.31,"words":[["Oi!",2.249,2.513],["Eu",2.862,3.054],["sou",3.054,3.402],["o",3.402,3.45],["Veri,",3.45,3.991],["o",4.184,4.244],["narrador",4.244,4.809],["desta",4.809,5.025],["história.",5.025,5.446],["Fica",5.782,6.119],["de",6.119,6.251],["olho,",6.251,6.563],["porque",6.72,6.96],["tudo",6.96,7.309],["começa",7.309,7.753],["com",7.753,7.874],["uma",7.874,8.006],["simples",8.006,8.474],["mensagem...",8.474,9.16]],"env":"00089997531000000000037888665667898977532388787556555420000027765788556753368754365312443014322111000000000000118851676447978766544200000153027610005677461366565565664303655654554558995146438765556656433323222000000000"},{"id":"msg","who":"neide","name":"Tia Neide","text":"URGENTE! APAGÃO NACIONAL! Estão dizendo que o Brasil inteiro ficará sem energia por vários dias! Comprem velas, água e alimentos antes que acabem! COMPARTILHEM!","s":17.096,"e":26.996,"words":[["URGENTE!",17.191,17.794],["APAGÃO",18.028,18.437],["NACIONAL!",18.448,19.028],["Estão",19.266,19.539],["dizendo",19.551,19.994],["que",20.005,20.085],["o",20.096,20.119],["Brasil",20.13,20.505],["inteiro",20.516,20.903],["ficará",20.914,21.278],["sem",21.289,21.505],["energia",21.516,21.982],["por",21.994,22.153],["vários",22.164,22.528],["dias!",22.539,22.971],["Comprem",23.21,23.573],["velas,",23.585,24.016],["água",24.051,24.357],["e",24.369,24.437],["alimentos",24.448,24.914],["antes",24.926,25.289],["que",25.301,25.391],["acabem!",25.403,25.88],["COMPARTILHEM!",26.119,26.846]],"env":"0000477654487656413321000000015510774257776773236976777663100000000443169775375323976755215735576532466775300597545411412565565332166778766444347675025563259985664444455575323210000000004983157788527878856753304898634975556644545555512543277663243312663027776422431000000001685229842133665454320000000000000000000000"},{"id":"rafa1","who":"rafa","name":"Rafa","text":"Nossa, como assim? O Brasil inteiro vai ficar sem energia? Preciso avisar minha família!","s":28.256,"e":35.21,"words":[["Nossa,",28.353,28.813],["como",29.037,29.297],["assim?",29.308,29.674],["O",30.485,30.579],["Brasil",30.591,30.945],["inteiro",30.956,31.369],["vai",31.381,31.511],["ficar",31.523,31.864],["sem",31.876,32.041],["energia?",32.053,32.596],["Preciso",33.409,33.869],["avisar",33.881,34.258],["minha",34.27,34.553],["família!",34.565,35.06]],"env":"000005678776333321000000012995467634444554100000000000000000000000000463469984337875430057665661365214301465313345454454322224578520000000000000000000000000044453443553386236433697444465445511476556675442100000000000000000000000"},{"id":"lucia1","who":"lucia","name":"Mãe Lúcia","text":"Meu Deus! Vou passar no mercado antes que fique tudo lotado!","s":39.288,"e":43.375,"words":[["Meu",39.388,39.625],["Deus!",39.638,40.125],["Vou",40.388,40.55],["passar",40.563,40.95],["no",40.963,41.075],["mercado",41.088,41.675],["antes",41.688,41.988],["que",42.0,42.113],["fique",42.125,42.413],["tudo",42.45,42.688],["lotado!",42.7,43.225]],"env":"000036789762238976664333210000000022786028743337985688777654002688632556876764143321561126202500037762755871038887521210000000000000000000000000"},{"id":"ze1","who":"ze","name":"Vovô Zé","text":"Melhor comprar bastante coisa, vai que realmente acontece!","s":54.238,"e":58.609,"words":[["Melhor",54.346,54.811],["comprar",54.826,55.262],["bastante",55.276,55.887],["coisa,",55.901,56.352],["vai",56.701,56.904],["que",56.919,57.035],["realmente",57.05,57.675],["acontece!",57.689,58.459]],"env":"000000446685487984220276430557754236743320776542344002376897322320000000000115785201355469865553455675334411565420478976523322200000000000000000000000000000"},{"id":"neide1","who":"neide","name":"Tia Neide","text":"Minha vizinha também recebeu essa mensagem. Deve ser verdade!","s":62.27,"e":66.09,"words":[["Minha",62.365,62.593],["vizinha",62.604,63.013],["também",63.025,63.388],["recebeu",63.4,63.809],["essa",63.82,63.979],["mensagem.",63.99,64.604],["Deve",64.838,65.088],["ser",65.1,65.304],["verdade!",65.315,65.94]],"env":"0000268887636753347887620576764666666633473358887335766653327876542343100000000269944633278543895336887654222100000000000000000000000"},{"id":"v1","who":"veri","name":"Veri","text":"Calma aí! Vamos voltar um pouquinho. Você percebeu o que aconteceu? Uma simples mensagem foi suficiente para fazer várias pessoas entrarem em desespero.","s":72.934,"e":82.664,"words":[["Calma",72.982,73.222],["aí!",73.222,73.511],["Vamos",73.836,74.208],["voltar",74.209,74.617],["um",74.617,74.713],["pouquinho.",74.713,75.254],["Você",75.578,75.843],["percebeu",75.843,76.42],["o",76.42,76.48],["que",76.48,76.552],["aconteceu?",76.552,77.249],["Uma",77.574,77.754],["simples",77.754,78.199],["mensagem",78.199,78.788],["foi",78.788,78.992],["suficiente",78.992,79.858],["para",79.858,80.05],["fazer",80.05,80.362],["várias",80.362,80.771],["pessoas",80.771,81.204],["entrarem",81.204,81.805],["em",81.805,81.877],["desespero.",81.877,82.514]],"env":"0004887676645444310000000000134487767733587610067775674177410125653321000000000014797666614755557753379888612551145413435554688754000000000006897676455898146544766557746676634541116654666657621585665776676613202655315644775532238887566420665677576775466553036777767666664754555641055332111000000000"},{"id":"v2","who":"veri","name":"Veri","text":"Mas por que isso acontece? Muitas fake news são criadas justamente para provocar medo, preocupação ou curiosidade. Quando uma mensagem parece urgente, as pessoas podem acabar compartilhando sem pensar duas vezes.","s":83.37,"e":96.525,"words":[["Mas",83.419,83.611],["por",83.611,83.767],["que",83.767,84.008],["isso",84.008,84.212],["acontece?",84.212,84.813],["Muitas",85.137,85.522],["fake",85.522,85.81],["news",85.81,86.135],["são",86.135,86.267],["criadas",86.267,86.724],["justamente",86.724,87.457],["para",87.457,87.649],["provocar",87.649,88.082],["medo,",88.082,88.551],["preocupação",88.683,89.621],["ou",89.621,89.789],["curiosidade.",89.789,90.63],["Quando",90.966,91.158],["uma",91.158,91.255],["mensagem",91.255,91.832],["parece",91.832,92.156],["urgente,",92.156,92.673],["as",92.877,92.985],["pessoas",92.985,93.394],["podem",93.394,93.682],["acabar",93.683,93.995],["compartilhando",93.995,94.704],["sem",94.704,94.993],["pensar",94.993,95.437],["duas",95.437,95.87],["vezes.",95.87,96.375]],"env":"0005775530471100655566546563145430242212332000000000001898996176552076501355466765446455234665663364343344664315556555665232036562036436303543334456666633440000036986115304654565636666530016875201454587634532553221112100000000000187797776665656646665435430344465453433233556552032000001354414656646665410676376541353266311443353202343455553445554567605444445466442333454555333246532232112320000000000"},{"id":"v3","who":"veri","name":"Veri","text":"E tem outro detalhe: quando recebemos uma informação de alguém conhecido, principalmente da nossa família, temos mais facilidade para acreditar nela.","s":97.214,"e":105.225,"words":[["E",97.263,97.359],["tem",97.359,97.563],["outro",97.563,97.876],["detalhe:",97.876,98.38],["quando",98.549,98.729],["recebemos",98.729,99.294],["uma",99.294,99.438],["informação",99.438,100.051],["de",100.051,100.099],["alguém",100.099,100.315],["conhecido,",100.315,100.904],["principalmente",101.049,101.794],["da",101.794,101.89],["nossa",101.89,102.13],["família,",102.13,102.611],["temos",102.767,103.008],["mais",103.008,103.368],["facilidade",103.368,104.089],["para",104.09,104.234],["acreditar",104.234,104.726],["nela.",104.727,105.075]],"env":"000551286676787721445476100575432211000001777554654546333776655434566411344454356546665454346541554324455355623200000469955400777666666534335555546321243334455545410000386665326667876644216555455552367666632104553134542200575445543221110000000000"},{"id":"v4","who":"veri","name":"Veri","text":"Mas receber uma mensagem de alguém conhecido não significa que ela seja verdadeira!","s":105.822,"e":110.384,"words":[["Mas",105.871,106.123],["receber",106.123,106.58],["uma",106.58,106.688],["mensagem",106.688,107.217],["de",107.217,107.289],["alguém",107.289,107.505],["conhecido",107.505,108.022],["não",108.022,108.262],["significa",108.262,108.996],["que",108.996,109.08],["ela",109.08,109.2],["seja",109.2,109.5],["verdadeira!",109.5,110.234]],"env":"0005789885468654873499767676655567667776366636533875245554455447435555687866675499972111556412551146654654764464258653575434476333122100000000"},{"id":"v5","who":"veri","name":"Veri","text":"Bom... vamos ver como essa história continua. Pode soltar!","s":111.174,"e":115.158,"words":[["Bom...",111.222,111.535],["vamos",111.811,112.135],["ver",112.136,112.352],["como",112.352,112.628],["essa",112.628,112.797],["história",112.797,113.169],["continua.",113.169,113.818],["Pode",114.155,114.467],["soltar!",114.467,115.008]],"env":"00034697643210000001459788754534976420027687665443353106876751036661435655432221000000000006898764344654654200453222100000000"},{"id":"carlos1","who":"carlos","name":"Seu Carlos","text":"Espera aí... ninguém falou de onde veio essa informação. Será que isso é verdade mesmo?","s":126.25,"e":132.953,"words":[["Espera",126.353,126.826],["aí...",126.839,127.155],["ninguém",127.379,127.774],["falou",127.787,128.208],["de",128.221,128.339],["onde",128.353,128.589],["veio",128.603,128.918],["essa",128.932,129.168],["informação.",129.182,129.945],["Será",130.855,131.25],["que",131.263,131.474],["isso",131.487,131.763],["é",131.776,131.816],["verdade",131.829,132.355],["mesmo?",132.368,132.803]],"env":"00000355443017566587655444420000001455555335545411588546866642346544424621378777665664333652116754576344436543100000000000000000000000000000013455777763011356767994435762476431476762355444457542343000000000000000000000000000"},{"id":"carlos2","who":"carlos","name":"Seu Carlos","text":"Site oficial... nada. Portais de notícia... nada. Nenhuma fonte confiável fala desse apagão.","s":142.038,"e":150.32,"words":[["Site",142.141,142.535],["oficial...",142.549,143.206],["nada.",143.43,143.878],["Portais",144.788,145.327],["de",145.341,145.42],["notícia...",145.433,146.025],["nada.",146.209,146.63],["Nenhuma",147.538,148.025],["fonte",148.038,148.406],["confiável",148.42,149.104],["fala",149.117,149.42],["desse",149.433,149.67],["apagão.",149.683,150.17]],"env":"00000023448775135511453443578666641000000024567665312320000000000000000000000000000003883210289777743364566213357734435520000034677653133110000000000000000000000000000355765456546762111565641320156521136787776225641115775673257633463047622565421000000000000000000000000000"},{"id":"v6","who":"veri","name":"Veri","text":"Muito bem! Finalmente alguém resolveu pesquisar antes de compartilhar!","s":155.71,"e":160.055,"words":[["Muito",155.759,156.167],["bem!",156.167,156.54],["Finalmente",156.864,157.573],["alguém",157.573,157.825],["resolveu",157.825,158.222],["pesquisar",158.222,158.835],["antes",158.835,159.196],["de",159.196,159.28],["compartilhar!",159.28,159.905]],"env":"0006878898415643468554332100000000000129999987667778774445533687767546863587206655403644478886566679814564351266526531345454322210000000"},{"id":"v7","who":"veri","name":"Veri","text":"Mas como podemos identificar uma notícia falsa? Existem alguns cuidados que fazem toda a diferença.","s":160.646,"e":166.638,"words":[["Mas",160.695,160.899],["como",160.899,161.139],["podemos",161.139,161.56],["identificar",161.56,162.209],["uma",162.209,162.329],["notícia",162.329,162.846],["falsa?",162.846,163.327],["Existem",163.651,164.144],["alguns",164.144,164.481],["cuidados",164.481,165.034],["que",165.034,165.154],["fazem",165.154,165.526],["toda",165.526,165.827],["a",165.827,165.863],["diferença.",165.863,166.488]],"env":"00058876731688971397447867666446347653215202677666665652015475564531113653224542100000000000798466665415766664336786514652366665333452142147753666410028775465341156635322256421000000000"},{"id":"v8","who":"veri","name":"Veri","text":"Primeiro: confira a fonte. Quem publicou essa informação? É um órgão oficial ou um site confiável?","s":167.838,"e":174.683,"words":[["Primeiro:",167.886,168.439],["confira",168.631,169.22],["a",169.22,169.268],["fonte.",169.268,169.773],["Quem",170.11,170.278],["publicou",170.278,170.807],["essa",170.807,170.975],["informação?",170.975,171.708],["É",172.045,172.165],["um",172.165,172.333],["órgão",172.333,172.646],["oficial",172.646,173.355],["ou",173.355,173.487],["um",173.487,173.583],["site",173.583,173.908],["confiável?",173.908,174.533]],"env":"000568998867777534200000025887411114766756541111433221023100000000000267993175456610147778764545521264445435655432221000000000006787776677775437655311445443655675441004996665555566613125531146433321121100000000"},{"id":"v9","who":"veri","name":"Veri","text":"Segundo: procure a mesma notícia em outros veículos de comunicação. Se uma informação tão importante for verdadeira, provavelmente haverá outras fontes confiáveis falando sobre ela.","s":175.87,"e":186.982,"words":[["Segundo:",175.918,176.507],["procure",176.699,177.12],["a",177.12,177.18],["mesma",177.18,177.601],["notícia",177.601,178.13],["em",178.13,178.25],["outros",178.25,178.634],["veículos",178.634,179.139],["de",179.139,179.235],["comunicação.",179.235,179.957],["Se",180.281,180.473],["uma",180.473,180.57],["informação",180.57,181.231],["tão",181.231,181.447],["importante",181.447,182.0],["for",182.0,182.168],["verdadeira,",182.168,182.805],["provavelmente",182.985,183.803],["haverá",183.803,184.151],["outras",184.151,184.572],["fontes",184.572,184.957],["confiáveis",184.957,185.762],["falando",185.762,186.231],["sobre",186.231,186.531],["ela.",186.531,186.832]],"env":"000346599333665443221000000498201366758555556787544856554002434543444555557751043433388654451024553333025555551354556453221000000000003576678766214544554465366652000667984045210045554221135422654233311266665231000002699737874387665666654346524765666656676402454541045653224530256621157665676523743431067666556644464654446643221110000000000"},{"id":"v10","who":"veri","name":"Veri","text":"Terceiro: confira a data. Às vezes, uma notícia antiga é compartilhada como se tivesse acabado de acontecer.","s":188.174,"e":195.031,"words":[["Terceiro:",188.222,188.847],["confira",189.027,189.58],["a",189.58,189.628],["data.",189.628,190.025],["Às",190.362,190.602],["vezes,",190.602,191.047],["uma",191.239,191.348],["notícia",191.348,191.768],["antiga",191.768,192.225],["é",192.225,192.249],["compartilhada",192.249,193.054],["como",193.054,193.247],["se",193.247,193.355],["tivesse",193.355,193.727],["acabado",193.727,194.244],["de",194.244,194.292],["acontecer.",194.292,194.881]],"env":"000998534555699777443100000278862111178986775447533200221000000000028975563599888445435300002679767412566565766540135466448414641354203454555665354003777554234536875566512675448999548355115551564554442100000000"},{"id":"v11","who":"veri","name":"Veri","text":"E quarto: desconfie de mensagens que usam palavras como URGENTE, COMPARTILHE AGORA ou que apresentam informações assustadoras sem mostrar provas.","s":196.206,"e":204.554,"words":[["E",196.255,196.351],["quarto:",196.351,196.771],["desconfie",197.036,197.565],["de",197.565,197.649],["mensagens",197.649,198.358],["que",198.358,198.514],["usam",198.514,198.743],["palavras",198.743,199.271],["como",199.271,199.488],["URGENTE,",199.488,200.005],["COMPARTILHE",200.161,200.678],["AGORA",200.678,201.219],["ou",201.219,201.363],["que",201.363,201.459],["apresentam",201.459,201.976],["informações",201.976,202.493],["assustadoras",202.493,203.25],["sem",203.25,203.502],["mostrar",203.502,203.875],["provas.",203.875,204.404]],"env":"0005500178533210000000000139865166631115783588655465546666553454341135665466533665556775234353035444333233556651131000002764474301445567542267666545300268841265136633655514555311545553565555355564442045433566545445445557765431456520034432211223210000000000"},{"id":"v12","who":"veri","name":"Veri","text":"E lembre-se: não compartilhe algo só porque recebeu de alguém conhecido!","s":205.65,"e":209.695,"words":[["E",205.699,205.795],["lembre-se:",205.795,206.348],["não",206.588,206.756],["compartilhe",206.756,207.357],["algo",207.357,207.658],["só",207.658,207.91],["porque",207.91,208.187],["recebeu",208.187,208.667],["de",208.667,208.715],["alguém",208.715,208.932],["conhecido!",208.932,209.545]],"env":"000477889977766333454200000006798862687368531144655776777633535667788511420155456444653377763774387524666656554543112100000000"},{"id":"v13","who":"veri","name":"Veri","text":"Agora sim. Pode continuar, Seu Carlos!","s":210.374,"e":213.721,"words":[["Agora",210.423,210.939],["sim.",210.939,211.312],["Pode",211.648,211.924],["continuar,",211.925,212.525],["Seu",212.754,213.03],["Carlos!",213.03,213.571]],"env":"000697533366665444343445533210000000000079998543046662567767776643200000245669630026543322221332000000000"},{"id":"carlos3","who":"carlos","name":"Seu Carlos","text":"Pessoal, fui pesquisar e não encontrei nenhuma fonte confiável confirmando esse apagão nacional. Não vamos espalhar essa informação sem confirmação!","s":223.102,"e":233.16,"words":[["Pessoal,",223.205,223.81],["fui",224.113,224.284],["pesquisar",224.297,224.915],["e",224.928,224.968],["não",224.981,225.126],["encontrei",225.139,225.586],["nenhuma",225.599,225.968],["fonte",225.981,226.323],["confiável",226.336,226.941],["confirmando",226.955,227.586],["esse",227.599,227.744],["apagão",227.757,228.139],["nacional.",228.152,228.744],["Não",229.655,229.997],["vamos",230.01,230.339],["espalhar",230.352,230.878],["essa",230.891,231.062],["informação",231.076,231.786],["sem",231.799,232.076],["confirmação!",232.089,233.01]],"env":"0000015874443479899864200000000001665127644217754377998376566555421565315465455555656872111666523311565211368878724640156411366545666645753358206752476665665333575476642100000000000000000000000000002567777655422687754653444313797478785653334421188555774344458766344447544125553116665567744554665420000000000000000000000000000"},{"id":"rafa2","who":"rafa","name":"Rafa","text":"Nossa, ainda bem que você avisou! Eu já estava preocupado.","s":235.15,"e":239.533,"words":[["Nossa,",235.247,235.695],["ainda",235.908,236.179],["bem",236.191,236.45],["que",236.462,236.533],["você",236.544,236.816],["avisou!",236.827,237.334],["Eu",238.145,238.299],["já",238.31,238.44],["estava",238.452,238.794],["preocupado.",238.806,239.383]],"env":"0000045766553322210000025444437721156554214236433368642244225984200000000000000000000000000079854266543316752620364135105665411100000000000000000000000"},{"id":"lucia2","who":"lucia","name":"Mãe Lúcia","text":"Eu também compartilhei sem pesquisar. Da próxima vez vou conferir antes!","s":241.314,"e":245.939,"words":[["Eu",241.414,241.539],["também",241.552,241.939],["compartilhei",241.952,242.614],["sem",242.627,242.839],["pesquisar.",242.852,243.452],["Da",243.714,243.864],["próxima",243.877,244.352],["vez",244.364,244.627],["vou",244.639,244.789],["conferir",244.802,245.277],["antes!",245.289,245.789]],"env":"000027750178776477664147751675213343675533326652454331364326765421000000014861035897433577752179963334995126752147557665876543122233320000000000000000000000000"},{"id":"ze2","who":"ze","name":"Vovô Zé","text":"Ih... e eu que comprei vela para um ano inteiro!","s":247.642,"e":251.069,"words":[["Ih...",247.75,248.07],["e",248.332,248.462],["eu",248.477,248.666],["que",248.68,248.797],["comprei",248.811,249.276],["vela",249.291,249.727],["para",249.741,249.945],["um",249.959,250.119],["ano",250.134,250.308],["inteiro!",250.323,250.919]],"env":"00000234444321000000002344589984101430254330344565421136657745630045544333345653334443002655463232000000000000000000000000000000"},{"id":"neide2","who":"neide","name":"Tia Neide","text":"Desculpa, gente. Eu repassei sem nem conferir de onde veio.","s":253.138,"e":256.754,"words":[["Desculpa,",253.233,253.768],["gente.",253.79,254.256],["Eu",254.49,254.593],["repassei",254.604,255.07],["sem",255.081,255.263],["nem",255.274,255.422],["conferir",255.433,255.877],["de",255.888,256.002],["onde",256.013,256.24],["veio.",256.252,256.604]],"env":"00001388444138972199844787655133220000000038866850874322986433577887751197314765665434889987365327765544200000000000000000000000"},{"id":"v14","who":"veri","name":"Veri","text":"Percebeu como uma notícia falsa pode causar confusão? Tudo começou com uma mensagem, passou por várias pessoas e quase ninguém parou para verificar se era verdade.","s":265.61,"e":274.786,"words":[["Percebeu",265.658,266.295],["como",266.295,266.487],["uma",266.487,266.596],["notícia",266.596,267.1],["falsa",267.1,267.557],["pode",267.557,267.81],["causar",267.81,268.17],["confusão?",268.17,268.771],["Tudo",269.096,269.288],["começou",269.288,269.673],["com",269.673,269.769],["uma",269.769,269.865],["mensagem,",269.865,270.49],["passou",270.634,270.922],["por",270.923,271.079],["várias",271.079,271.487],["pessoas",271.487,272.016],["e",272.016,272.233],["quase",272.233,272.569],["ninguém",272.569,272.882],["parou",272.882,273.242],["para",273.242,273.41],["verificar",273.411,273.879],["se",273.879,273.975],["era",273.975,274.084],["verdade.",274.084,274.636]],"env":"0006975666984439987782028765676565302556555563111377764553410078843126664468520255212433456664210000000000688573386665775861265656644357745544433331000008867779304644325899766753067456766876676544201000189874588788488795278757888614756357451142025543335453354222432221121000000000"},{"id":"v15","who":"veri","name":"Veri","text":"As fake news não afetam apenas quem acredita nelas. Elas também podem prejudicar outras pessoas, causar medo e espalhar desinformação.","s":275.47,"e":284.226,"words":[["As",275.519,275.687],["fake",275.687,275.987],["news",275.987,276.348],["não",276.348,276.54],["afetam",276.54,277.057],["apenas",277.057,277.454],["quem",277.454,277.622],["acredita",277.622,278.211],["nelas.",278.211,278.716],["Elas",279.04,279.304],["também",279.304,279.713],["podem",279.713,279.977],["prejudicar",279.977,280.542],["outras",280.542,280.915],["pessoas,",280.915,281.492],["causar",281.636,282.008],["medo",282.008,282.573],["e",282.573,282.67],["espalhar",282.67,283.21],["desinformação.",283.21,284.076]],"env":"0005866421996113655666766533577667631114766302555510056555545116565314565322455104555543222221332100000000000367886423555426776621565466424643452220256545777620445420454665365556434300002688744686446556677663354100346845410776556665435533554114435544554542211000000000"},{"id":"v16","who":"veri","name":"Veri","text":"Por isso, antes de compartilhar qualquer coisa, pare, pense e pesquise.","s":284.922,"e":289.699,"words":[["Por",284.982,285.114],["isso,",285.114,285.463],["antes",285.715,286.016],["de",286.016,286.1],["compartilhar",286.1,286.713],["qualquer",286.713,287.182],["coisa,",287.182,287.626],["pare,",287.759,288.095],["pense",288.251,288.792],["e",288.792,288.864],["pesquise.",288.864,289.549]],"env":"00059878767667634200000047879924653422565156413354556430257610027764210157787744551000059886566200000098777765554620047206874562013543234210000000000"},{"id":"v17","who":"veri","name":"Veri","text":"Verifique a fonte.","s":290.49,"e":291.89,"words":[["Verifique",290.539,291.176],["a",291.176,291.26],["fonte.",291.26,291.74]],"env":"00033499846411146640255411113322210221000000000000000000"},{"id":"v18","who":"veri","name":"Veri","text":"Confira a data.","s":292.862,"e":294.118,"words":[["Confira",292.922,293.487],["a",293.487,293.535],["data.",293.535,293.968]],"env":"00039998321119998788744764431003210000000000000000000000"},{"id":"v19","who":"veri","name":"Veri","text":"Pesquise antes de compartilhar.","s":295.234,"e":297.319,"words":[["Pesquise",295.282,296.075],["antes",296.075,296.448],["de",296.448,296.532],["compartilhar.",296.532,297.169]],"env":"00089966441013555553454555555667324543340255415431224444322110000000"},{"id":"v20","who":"veri","name":"Veri","text":"E não espalhe informações sem confirmação.","s":298.014,"e":300.773,"words":[["E",298.063,298.147],["não",298.147,298.375],["espalhe",298.375,298.784],["informações",298.784,299.541],["sem",299.541,299.841],["confirmação.",299.841,300.623]],"env":"0006888899877563009998766631155455447755666745545564878813764115556655656553221000000000"},{"id":"v21","who":"veri","name":"Veri","text":"Afinal, combater as fake news também é uma responsabilidade nossa. Não deixe que uma mentira se transforme em verdade só porque foi compartilhada muitas vezes!","s":301.766,"e":311.231,"words":[["Afinal,",301.815,302.452],["combater",302.596,303.113],["as",303.113,303.245],["fake",303.245,303.533],["news",303.533,303.87],["também",303.87,304.339],["é",304.339,304.375],["uma",304.375,304.495],["responsabilidade",304.495,305.456],["nossa.",305.456,305.853],["Não",306.19,306.454],["deixe",306.454,306.851],["que",306.851,306.935],["uma",306.935,307.055],["mentira",307.055,307.524],["se",307.524,307.644],["transforme",307.644,308.125],["em",308.125,308.185],["verdade",308.185,308.714],["só",308.714,308.978],["porque",308.978,309.242],["foi",309.242,309.387],["compartilhada",309.387,310.048],["muitas",310.048,310.613],["vezes!",310.613,311.081]],"env":"0003997211556555555441000015976687410498666454116630144546566423201756743766555655543466430254554535454347655335554221344311000000000068898789538777754542126565566651144587564431345546415875666535432125566542334656678610420155127513663564113546675466666667798314553433665423322331000000000"},{"id":"v22","who":"veri","name":"Veri","text":"Pare. Pense. Verifique. A informação também é responsabilidade sua!","s":313.414,"e":318.805,"words":[["Pare.",313.464,313.909],["Pense.",314.255,314.556],["Verifique.",314.916,315.722],["A",316.059,316.167],["informação",316.167,316.828],["também",316.828,317.213],["é",317.213,317.249],["responsabilidade",317.249,318.27],["sua!",318.27,318.655]],"env":"00000899865343310000000000047642443200000000001445988997411146541001100000000000048777411665455457646663155553676676543476451046566564655533776533457653533321000000000"}],"marks":{"open":0.0,"s1":10.496,"s1_notify":13.696,"s1_zoom":15.296,"s1_msg":16.696,"s1_react":27.656,"s1_fwd":35.888,"s1_mom":37.888,"s1_spread":44.088,"s2":49.638,"s2_empty":59.47,"s2_chaos":66.734,"freeze1":70.934,"s3":70.934,"s3_in":72.034,"s3_out":115.35,"unfreeze1":116.25,"s4":120.45,"s4_search":134.338,"s4_r1":137.138,"s4_r2":138.438,"s4_r3":139.738,"s4_r4":141.038,"s4_think":151.11,"freeze2":153.71,"s5":153.71,"s5_in":154.81,"tip1":167.338,"tip2":175.37,"tip3":187.674,"tip4":195.706,"tip5":205.35,"s5_out":213.902,"unfreeze2":214.802,"s6":217.802,"s6_type":220.802,"s6_send":222.602,"s6_rafa":234.35,"s6_lucia":240.514,"s6_ze":246.942,"s6_neide":252.438,"s6_all":257.81,"s7":262.21,"s7_in":264.81,"list":290.29,"li1":290.29,"li2":292.662,"li3":295.034,"li4":297.814,"final":312.014,"credits":321.982,"end":328.982}};
+
+</script>
+<script>
+// ===================== núcleo =====================
+const W = 540, H = 960;
+const TLD = window.TL, M = TLD.marks, LINES = TLD.lines;
+const LBY = {}; LINES.forEach(l => (LBY[l.id] = l));
+const FD = '"Baloo 2", "Nunito", system-ui, sans-serif';
+const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, k) => a + (b - a) * k;
+const pr = (t, a, b) => clamp((t - a) / (b - a));
+const eio = k => (k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2);
+const eo = k => 1 - Math.pow(1 - k, 3);
+const eob = k => { const c1 = 2.0, c3 = c1 + 1; return 1 + c3 * Math.pow(k - 1, 3) + c1 * Math.pow(k - 1, 2); };
+const hash = n => { const s = Math.sin(n * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); };
+const TAU = Math.PI * 2;
+// janela "entra e sai": 0 antes de a, sobe até 1, desce depois de b
+const win = (t, a, b, fi = 0.3, fo = 0.3) => pr(t, a, a + fi) * (1 - pr(t, b - fo, b));
+
+const COL = {
+  navy: '#14213D', navy2: '#1E3163', yellow: '#FFC93C', red: '#E63946', teal: '#22B5A8',
+  white: '#FFFFFF', ink: '#1B1B2F', cream: '#FFF6E5',
+  veri: '#22B5A8', rafa: '#FF7A2F', lucia: '#E2445C', ze: '#6B8E4E', neide: '#8E4FC9', carlos: '#2E86C1',
+};
+
+function lineAt(who, t) {
+  for (const l of LINES) if (l.who === who && t >= l.s && t < l.e) return l;
+  return null;
+}
+function talkOf(who, t) {
+  const l = lineAt(who, t); if (!l) return 0;
+  const c = l.env.charCodeAt(Math.floor((t - l.s) * 30));
+  return c ? (c - 48) / 9 : 0;
+}
+// 0..1 suave enquanto o personagem está com a palavra (para gestos)
+function speaking(who, t) {
+  for (const l of LINES) if (l.who === who && t >= l.s - 0.3 && t < l.e + 0.4) return pr(t, l.s - 0.3, l.s + 0.2) * (1 - pr(t, l.e, l.e + 0.4));
+  return 0;
+}
+// instante em que uma palavra (fragmento) é dita numa fala
+function wt(id, frag, nth = 0) {
+  const l = LBY[id]; const f = frag.toLowerCase(); let n = 0;
+  for (const w of l.words) if (w[0].toLowerCase().includes(f)) { if (n++ === nth) return w[1]; }
+  return l.s;
+}
+
+// ---------- primitivas ----------
+function rr(c, x, y, w, h, r) {
+  r = Math.min(r, w / 2, h / 2);
+  c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r);
+  c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath();
+}
+function fillRR(c, x, y, w, h, r, col) { rr(c, x, y, w, h, r); c.fillStyle = col; c.fill(); }
+function ell(c, x, y, rx, ry, col, rot = 0) { c.beginPath(); c.ellipse(x, y, Math.abs(rx), Math.abs(ry), rot, 0, TAU); if (col) { c.fillStyle = col; c.fill(); } }
+function circ(c, x, y, r, col) { c.beginPath(); c.arc(x, y, Math.abs(r), 0, TAU); c.fillStyle = col; c.fill(); }
+function line(c, pts, col, w, cap = 'round') {
+  c.beginPath(); c.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) c.lineTo(pts[i][0], pts[i][1]);
+  c.strokeStyle = col; c.lineWidth = w; c.lineCap = cap; c.lineJoin = 'round'; c.stroke();
+}
+function txt(c, s, x, y, size, col, o = {}) {
+  c.font = `${o.w || 800} ${size}px ${o.f || FD}`; c.textAlign = o.a || 'center'; c.textBaseline = o.b || 'middle';
+  if (o.stroke) { c.lineWidth = o.sw || 6; c.strokeStyle = o.stroke; c.lineJoin = 'round'; c.strokeText(s, x, y); }
+  c.fillStyle = col; c.fillText(s, x, y);
+}
+const wrapCache = new Map();
+function wrap(c, s, maxW, size, weight = 700) {
+  const key = s + '|' + maxW + '|' + size + '|' + weight;
+  if (wrapCache.has(key)) return wrapCache.get(key);
+  c.font = `${weight} ${size}px ${FD}`;
+  const out = []; let cur = '';
+  for (const w of s.split(' ')) {
+    const tryS = cur ? cur + ' ' + w : w;
+    if (c.measureText(tryS).width > maxW && cur) { out.push(cur); cur = w; } else cur = tryS;
+  }
+  if (cur) out.push(cur);
+  wrapCache.set(key, out); return out;
+}
+function shadowed(c, blur, col, oy, fn) { c.save(); c.shadowBlur = blur; c.shadowColor = col; c.shadowOffsetY = oy; fn(); c.restore(); }
+// câmera: interpola keyframes [tempo, x, y, zoom]
+function camKF(t, keys) {
+  if (t <= keys[0][0]) return keys[0].slice(1);
+  for (let i = 0; i < keys.length - 1; i++) {
+    const a = keys[i], b = keys[i + 1];
+    if (t < b[0]) { const k = eio(pr(t, a[0], b[0])); return [lerp(a[1], b[1], k), lerp(a[2], b[2], k), lerp(a[3], b[3], k)]; }
+  }
+  return keys[keys.length - 1].slice(1);
+}
+function applyCam(c, cam, shake = 0, t = 0) {
+  const [x, y, z] = cam;
+  const sx = shake ? Math.sin(t * 53) * shake : 0, sy = shake ? Math.cos(t * 47) * shake : 0;
+  c.translate(W / 2 + sx, H / 2 + sy); c.scale(z, z); c.translate(-x, -y);
+}
+
+// ===================== personagens =====================
+const CH = {
+  rafa:   { skin: '#C68642', skinD: '#A86E35', hair: '#2A1A10', shirt: '#FF7A2F', shirtD: '#D9601A', pants: '#3A5BA0', shoe: '#F4F4F4', shoe2: '#D64545', hs: 'curly', h: 0.93, seed: 0.3 },
+  lucia:  { skin: '#9C5F3A', skinD: '#7F4A2B', hair: '#3A2214', shirt: '#E2445C', shirtD: '#B92F45', pants: '#2F3B59', shoe: '#3A2A2A', hs: 'long', skirt: true, ear: '#F2C14E', lips: '#9E2A3E', h: 0.99, seed: 1.7 },
+  ze:     { skin: '#F0C6A0', skinD: '#D9A57C', hair: '#F2F2F2', shirt: '#6B8E4E', shirtD: '#52733A', pants: '#B59B7A', shoe: '#5A3B24', hs: 'bald', glasses: 'round', stache: true, inner: '#F5F0E1', h: 0.95, seed: 2.4 },
+  neide:  { skin: '#6B3E26', skinD: '#55301C', hair: '#1A1110', shirt: '#8E4FC9', shirtD: '#6E35A6', pants: '#2E2E48', shoe: '#C0392B', hs: 'afro', band: '#F7C948', ear: '#F2C14E', lips: '#B5332A', h: 1, seed: 3.1 },
+  carlos: { skin: '#E2AE84', skinD: '#C79268', hair: '#8C8C8C', shirt: '#2E86C1', shirtD: '#1F6A9C', pants: '#6B5B3E', shoe: '#4A3020', hs: 'short', beard: '#9A9A9A', glasses: 'rect', h: 1.02, seed: 0.9 },
+};
+// figurantes do mercado
+const NPC_PAL = [
+  { skin: '#D7A27A', hair: '#4A2E1C', shirt: '#F4A261', pants: '#264653', hs: 'short' },
+  { skin: '#8D5524', hair: '#111', shirt: '#43AA8B', pants: '#3D405B', hs: 'afro', band: '#E76F51' },
+  { skin: '#F1C27D', hair: '#B5651D', shirt: '#577590', pants: '#6D597A', hs: 'long', skirt: true },
+  { skin: '#C68642', hair: '#2B2B2B', shirt: '#E9C46A', pants: '#2A2A2A', hs: 'curly' },
+  { skin: '#E0AC69', hair: '#5A3825', shirt: '#9B5DE5', pants: '#3A3A55', hs: 'long' },
+  { skin: '#A0522D', hair: '#1D1D1D', shirt: '#EF476F', pants: '#073B4C', hs: 'short' },
+];
+NPC_PAL.forEach((p, i) => { CH['npc' + i] = Object.assign({ skinD: p.skin, shirtD: p.shirt, shoe: '#333', h: 1, seed: i * 0.77 }, p); });
+
+const MOODS = {
+  neutral:   { bi: 0, bo: 0, by: -19, mouth: 'smile0' },
+  happy:     { bi: -1, bo: 1, by: -20, mouth: 'smile', arch: true, cheek: true },
+  worried:   { bi: -6, bo: 2, by: -19, mouth: 'frown', sweat: true },
+  scared:    { bi: -8, bo: 0, by: -24, mouth: 'o', wide: true, small: true, sweat: true },
+  surprised: { bi: -3, bo: -3, by: -25, mouth: 'o', wide: true, arch: true },
+  thinking:  { bi: -4, bo: -7, by: -21, bi2: 3, bo2: 0, mouth: 'side', lookUp: true },
+  suspicious:{ bi: 4, bo: -3, by: -17, mouth: 'flat', lids: true },
+  sheepish:  { bi: -5, bo: 2, by: -19, mouth: 'grimace', sweat: true, cheek: true },
+  relieved:  { bi: -4, bo: 1, by: -19, mouth: 'smile', closed: true, cheek: true },
+  determined:{ bi: 3, bo: -2, by: -18, mouth: 'smile0' },
+};
+
+function eyesBlink(t, seed) { return ((t + seed * 3.3) % 4.2) < 0.13; }
+
+function drawHead(c, P, o) {
+  const t = o.t || 0, talk = o.talk || 0, md = MOODS[o.mood || 'neutral'];
+  const look = o.look || 0, lookY = (o.lookY || 0) + (md.lookUp ? -0.8 : 0);
+  // cabelo de trás
+  c.fillStyle = P.hair;
+  if (P.hs === 'long') { rr(c, -47, -28, 94, 92, 38); c.fill(); }
+  if (P.hs === 'afro') { circ(c, 0, -30, 56, P.hair); circ(c, -40, -8, 30, P.hair); circ(c, 40, -8, 30, P.hair); }
+  if (P.hs === 'bald') { ell(c, 0, 6, 40, 34, P.hair); }
+  // orelhas
+  circ(c, -39, 4, 8, P.skin); circ(c, 39, 4, 8, P.skin);
+  // rosto
+  ell(c, 0, 0, 40, 43, P.skin);
+  // barba
+  if (P.beard) {
+    c.beginPath(); c.moveTo(-39, 2); c.quadraticCurveTo(-36, 46, 0, 50); c.quadraticCurveTo(36, 46, 39, 2);
+    c.quadraticCurveTo(26, 22, 0, 22); c.quadraticCurveTo(-26, 22, -39, 2); c.fillStyle = P.beard; c.fill();
+  }
+  // cabelo da frente
+  c.fillStyle = P.hair;
+  if (P.hs === 'curly') {
+    for (let i = 0; i < 11; i++) { const a = Math.PI * (1.08 + i * 0.084); circ(c, Math.cos(a) * 36, -8 + Math.sin(a) * 36, 12.5, P.hair); }
+    ell(c, 0, -30, 34, 16, P.hair);
+  } else if (P.hs === 'long') {
+    c.beginPath(); c.moveTo(-43, 6); c.arc(0, 0, 44, Math.PI * 1.0, Math.PI * 2.0);
+    c.quadraticCurveTo(30, -26, 4, -24); c.quadraticCurveTo(-24, -20, -38, 2); c.closePath(); c.fill();
+  } else if (P.hs === 'short') {
+    c.beginPath(); c.arc(0, -2, 42, Math.PI * 1.04, Math.PI * 1.96); c.quadraticCurveTo(20, -30, 0, -28); c.quadraticCurveTo(-24, -30, -41, -10); c.closePath(); c.fill();
+  } else if (P.hs === 'bald') {
+    ell(c, -37, -10, 9, 15, P.hair); ell(c, 37, -10, 9, 15, P.hair);
+    ell(c, -12, -30, 10, 5, 'rgba(255,255,255,.35)');
+  } else if (P.hs === 'afro') {
+    c.beginPath(); c.arc(0, -2, 43, Math.PI * 1.06, Math.PI * 1.94); c.quadraticCurveTo(0, -30, -41, -14); c.fill();
+    c.beginPath(); c.arc(0, -6, 45, Math.PI * 1.12, Math.PI * 1.88); c.strokeStyle = P.band; c.lineWidth = 8; c.lineCap = 'round'; c.stroke();
+  }
+  // olhos
+  const blink = o.closed || md.closed || eyesBlink(t, P.seed);
+  const ery = md.wide ? 12.5 : 10.5;
+  for (const s of [-1, 1]) {
+    const ex = s * 15, ey = -2;
+    if (blink) {
+      c.beginPath(); md.closed ? c.arc(ex, ey + 2, 7, Math.PI * 1.1, Math.PI * 1.9) : (c.moveTo(ex - 8, ey + 1), c.quadraticCurveTo(ex, ey + 5, ex + 8, ey + 1));
+      c.strokeStyle = '#2b1a14'; c.lineWidth = 3; c.lineCap = 'round'; c.stroke();
+    } else {
+      ell(c, ex, ey, 8.5, ery, '#fff');
+      const pr_ = md.small ? 3.6 : 5;
+      circ(c, ex + look * 3.5, ey + lookY * 3 + 1, pr_, '#2a1d17');
+      circ(c, ex + look * 3.5 + 1.6, ey + lookY * 3 - 1.2, 1.5, '#fff');
+      if (md.lids) { c.fillStyle = P.skin; c.fillRect(ex - 10, ey - 14, 20, 11); }
+    }
+  }
+  // sobrancelhas
+  const bc = P.hs === 'bald' ? '#e8e8e8' : (P.beard ? '#6d6d6d' : P.hair);
+  for (const s of [-1, 1]) {
+    const bi = (s === 1 && md.bi2 !== undefined) ? md.bi2 : md.bi, bo = (s === 1 && md.bo2 !== undefined) ? md.bo2 : md.bo;
+    c.beginPath(); c.moveTo(s * 7, md.by + bi);
+    if (md.arch) c.quadraticCurveTo(s * 15, md.by - 5, s * 23, md.by + bo); else c.lineTo(s * 23, md.by + bo);
+    c.strokeStyle = bc; c.lineWidth = P.hs === 'bald' ? 5.5 : 4.5; c.lineCap = 'round'; c.stroke();
+  }
+  // nariz
+  c.beginPath(); c.arc(0, 7, 4.5, Math.PI * 0.15, Math.PI * 0.85); c.strokeStyle = P.skinD; c.lineWidth = 2.5; c.stroke();
+  // bochechas
+  if (md.cheek) { circ(c, -25, 12, 6.5, 'rgba(255,90,110,.28)'); circ(c, 25, 12, 6.5, 'rgba(255,90,110,.28)'); }
+  // boca
+  const my = 21;
+  if (talk > 0.04) {
+    const op = 2 + talk * 10.5;
+    ell(c, 0, my + op * 0.25, 9.5 - talk * 1.5, op, '#5B1F1F');
+    if (op > 5) ell(c, 0, my + op * 0.8, 5, op * 0.35, '#E46A7A');
+    if (op > 6) { c.fillStyle = '#fff'; c.fillRect(-6, my + op * 0.25 - op + 1, 12, 3); }
+  } else {
+    c.strokeStyle = P.lips || '#6b2a22'; c.lineWidth = 3; c.lineCap = 'round'; c.beginPath();
+    switch (md.mouth) {
+      case 'smile': c.moveTo(-11, my - 2); c.quadraticCurveTo(0, my + 11, 11, my - 2); c.fillStyle = '#5B1F1F'; c.fill(); c.stroke(); break;
+      case 'frown': c.moveTo(-8, my + 4); c.quadraticCurveTo(0, my - 4, 8, my + 4); c.stroke(); break;
+      case 'o': ell(c, 0, my + 2, 5, 7, '#5B1F1F'); break;
+      case 'side': c.moveTo(-4, my + 2); c.quadraticCurveTo(5, my + 4, 10, my - 2); c.stroke(); break;
+      case 'flat': c.moveTo(-8, my + 1); c.lineTo(8, my + 1); c.stroke(); break;
+      case 'grimace': rr(c, -10, my - 3, 20, 9, 3); c.fillStyle = '#fff'; c.fill(); c.stroke(); c.beginPath(); c.moveTo(-10, my + 1.5); c.lineTo(10, my + 1.5); c.lineWidth = 1.5; c.stroke(); break;
+      default: c.moveTo(-7, my); c.quadraticCurveTo(0, my + 5, 7, my); c.stroke();
+    }
+  }
+  if (P.stache) { ell(c, -8, 15, 10, 5, P.hair, 0.2); ell(c, 8, 15, 10, 5, P.hair, -0.2); }
+  // óculos
+  if (P.glasses) {
+    c.strokeStyle = '#2d2d2d'; c.lineWidth = 2.6;
+    if (P.glasses === 'round') { c.beginPath(); c.arc(-15, -2, 12, 0, TAU); c.moveTo(27, -2); c.arc(15, -2, 12, 0, TAU); c.stroke(); }
+    else { rr(c, -28, -11, 26, 18, 5); c.stroke(); rr(c, 2, -11, 26, 18, 5); c.stroke(); }
+    c.beginPath(); c.moveTo(-3, -3); c.lineTo(3, -3); c.stroke();
+    c.fillStyle = 'rgba(255,255,255,.18)'; c.fillRect(-24, -9, 6, 6); c.fillRect(6, -9, 6, 6);
+  }
+  if (P.ear) { c.strokeStyle = P.ear; c.lineWidth = 3; c.beginPath(); P.hs === 'afro' ? c.arc(-40, 18, 7, 0, TAU) : c.arc(-40, 14, 3, 0, TAU); c.stroke(); c.beginPath(); P.hs === 'afro' ? c.arc(40, 18, 7, 0, TAU) : c.arc(40, 14, 3, 0, TAU); c.stroke(); }
+  if (md.sweat && !o.noSweat) {
+    const k = (t * 0.8 + P.seed) % 1.4; if (k < 1) { const yy = -26 + k * 22; c.globalAlpha = 1 - k; c.beginPath(); c.moveTo(36, yy - 9); c.quadraticCurveTo(43, yy + 2, 36, yy + 4); c.quadraticCurveTo(29, yy + 2, 36, yy - 9); c.fillStyle = '#7FD3F7'; c.fill(); c.globalAlpha = 1; }
+  }
+}
+
+// IK de dois ossos
+function arm(c, S, Ht, side, col, skin, l1 = 46, l2 = 44, w = 17) {
+  let dx = Ht[0] - S[0], dy = Ht[1] - S[1], d = Math.hypot(dx, dy);
+  const mx = l1 + l2 - 0.5; if (d > mx) { dx *= mx / d; dy *= mx / d; d = mx; }
+  d = Math.max(d, 8);
+  const base = Math.atan2(dy, dx), A = Math.acos(clamp((l1 * l1 + d * d - l2 * l2) / (2 * l1 * d), -1, 1));
+  const e1 = [S[0] + l1 * Math.cos(base + A), S[1] + l1 * Math.sin(base + A)];
+  const e2 = [S[0] + l1 * Math.cos(base - A), S[1] + l1 * Math.sin(base - A)];
+  const sc = e => side * e[0] + 0.7 * e[1];
+  const E = sc(e1) > sc(e2) ? e1 : e2;
+  const Hh = [S[0] + dx, S[1] + dy];
+  line(c, [S, E, Hh], col, w); circ(c, Hh[0], Hh[1], 9.5, skin);
+  return Hh;
+}
+
+function phoneProp(c, x, y, rot = 0, lit = true, sc = 1) {
+  c.save(); c.translate(x, y); c.rotate(rot); c.scale(sc, sc);
+  fillRR(c, -14, -24, 28, 48, 6, '#1d1f2b');
+  fillRR(c, -11, -20, 22, 40, 3, lit ? '#9EE7FF' : '#33415c');
+  if (lit) { c.fillStyle = 'rgba(255,255,255,.7)'; c.fillRect(-8, -14, 16, 3); c.fillRect(-8, -8, 12, 3); c.fillRect(-8, -2, 14, 3); }
+  c.restore();
+}
+
+// pose -> alvos das mãos
+function handTargets(pose, shY, headY, t, g) {
+  const sw = Math.sin(t * 1.7) * 2;
+  let L = [-44, shY + 92 + sw], R = [44, shY + 92 - sw], prop = null;
+  switch (pose) {
+    case 'phone': L = [-13, shY + 60]; R = [13, shY + 56 + Math.sin(t * 3) * 1.5]; prop = 'phone'; break;
+    case 'phoneUp': L = [-12, shY + 34]; R = [12, shY + 32]; prop = 'phoneUp'; break;
+    case 'type': L = [-13, shY + 60]; R = [10 + Math.sin(t * 22) * 3, shY + 54 + Math.abs(Math.sin(t * 17)) * 3]; prop = 'phone'; break;
+    case 'up': L = [-58, shY - 55 + Math.sin(t * 12) * 3]; R = [58, shY - 55 + Math.cos(t * 12) * 3]; break;
+    case 'cheeks': L = [-30, headY + 16]; R = [30, headY + 16]; break;
+    case 'cart': L = [26, shY + 92]; R = [48, shY + 88]; break;
+    case 'reach': L = [-30, shY - 50]; R = [22, shY - 62 + Math.sin(t * 6) * 6]; break;
+    case 'wave': R = [66, shY - 62 + Math.sin(t * 9) * 8]; break;
+    case 'chin': R = [10, headY + 40]; L = [-4, shY + 52]; break;
+    case 'hips': L = [-52, shY + 82]; R = [52, shY + 82]; break;
+    case 'shrug': L = [-62, shY + 30]; R = [62, shY + 30]; break;
+    case 'scratch': R = [30, headY - 30 + Math.sin(t * 14) * 4]; break;
+    case 'chest': R = [-8, shY + 30]; break;
+    case 'pray': L = [-6, shY + 34]; R = [6, shY + 34]; break;
+    case 'thumb': R = [56, shY + 10]; break;
+    case 'box': L = [-30, shY + 50]; R = [30, shY + 50]; break;
+  }
+  if (g > 0 && (pose === 'down' || pose === 'phone' && false)) {
+    R = [lerp(R[0], 40 + Math.sin(t * 3.3) * 8, g), lerp(R[1], shY + 42 + Math.sin(t * 4.1) * 10, g)];
+  }
+  return { L, R, prop };
+}
+
+// personagem completo; o = {x,y,s,t,talk,mood,look,pose,sit,walk,flip,tilt}
+function person(c, who, o) {
+  const P = CH[who], t = o.t || 0, talk = o.talk || 0, walk = o.walk || 0;
+  c.save(); c.translate(o.x, o.y); const s = (o.s || 1) * P.h; c.scale(o.flip ? -s : s, s);
+  const ph = t * 7.5 + P.seed;
+  const bob = walk ? -Math.abs(Math.sin(ph)) * 5 : 0;
+  const br = Math.sin(t * 2.3 + P.seed * 5) * 1.3;
+  const hipY = (o.sit ? -96 : -130) + bob;
+  const shY = hipY - 100 - br * 0.5;
+  const nod = talk * Math.sin(t * 8.5) * 2 + (o.nod || 0);
+  const headY = shY - 49 + nod * 0.6;
+  // sombra
+  if (!o.noShadow) ell(c, 0, 1, 50, 9, 'rgba(0,0,0,.16)');
+  // pernas
+  const legCol = P.skirt ? P.skin : P.pants;
+  if (o.sit) {
+    for (const sd of [-1, 1]) { line(c, [[sd * 17, hipY + 8], [sd * 21, hipY + 30], [sd * 22, -10]], legCol, 23); ell(c, sd * 25, -7, 17, 9, P.shoe); }
+    fillRR(c, -38, hipY - 8, 76, 36, 15, P.skirt ? P.pants : P.pants);
+  } else {
+    for (const sd of [-1, 1]) {
+      const sw = walk ? Math.sin(ph + (sd > 0 ? Math.PI : 0)) : 0;
+      const fx = sd * 17 + sw * 15, lift = walk ? Math.max(0, -Math.cos(ph + (sd > 0 ? Math.PI : 0))) * 8 : 0;
+      line(c, [[sd * 16, hipY + 6], [sd * 17 + sw * 7, (hipY - lift) / 2], [fx, -8 - lift]], legCol, 23);
+      ell(c, fx + sd * 4, -7 - lift, 17, 9, P.shoe);
+      if (P.shoe2) { c.fillStyle = P.shoe2; c.fillRect(fx + sd * 4 - 12, -6 - lift, 24, 3); }
+    }
+    if (P.skirt) { c.beginPath(); c.moveTo(-34, hipY - 6); c.lineTo(34, hipY - 6); c.lineTo(44, hipY + 56); c.quadraticCurveTo(0, hipY + 64, -44, hipY + 56); c.closePath(); c.fillStyle = P.pants; c.fill(); }
+  }
+  // pescoço
+  c.fillStyle = P.skinD; c.fillRect(-9, headY + 30, 18, shY - headY - 26);
+  // tronco
+  c.beginPath(); c.moveTo(-30, shY - 4); c.quadraticCurveTo(0, shY - 10, 30, shY - 4); c.quadraticCurveTo(43, shY, 41, shY + 20);
+  c.lineTo(35, hipY + 4); c.quadraticCurveTo(0, hipY + 12, -35, hipY + 4); c.lineTo(-41, shY + 20); c.quadraticCurveTo(-43, shY, -30, shY - 4);
+  c.fillStyle = P.shirt; c.fill();
+  // detalhes da roupa
+  if (who === 'rafa') {
+    fillRR(c, -24, hipY - 38, 48, 22, 8, P.shirtD);
+    c.beginPath(); c.arc(0, shY - 2, 20, 0.15, Math.PI - 0.15); c.strokeStyle = P.shirtD; c.lineWidth = 6; c.stroke();
+    line(c, [[-6, shY + 10], [-7, shY + 34]], '#fff', 2.5); line(c, [[6, shY + 10], [7, shY + 34]], '#fff', 2.5);
+  } else if (who === 'lucia') {
+    c.beginPath(); c.moveTo(-12, shY - 6); c.lineTo(0, shY + 16); c.lineTo(12, shY - 6); c.fillStyle = P.skinD; c.fill();
+    for (let i = -2; i <= 2; i++) circ(c, i * 5, shY + 3 + Math.abs(i) * -2.5 + 6, 2.2, '#F2C14E');
+    c.fillStyle = P.shirtD; c.fillRect(-36, hipY - 12, 72, 7);
+  } else if (who === 'ze') {
+    c.beginPath(); c.moveTo(-12, shY - 6); c.lineTo(0, shY + 40); c.lineTo(12, shY - 6); c.fillStyle = P.inner; c.fill();
+    line(c, [[-12, shY - 6], [-2, shY + 60], [-4, hipY + 6]], P.shirtD, 3); line(c, [[12, shY - 6], [2, shY + 60], [4, hipY + 6]], P.shirtD, 3);
+    for (let i = 0; i < 3; i++) circ(c, -6, shY + 56 + i * 14, 2.8, '#E9D8A6');
+    fillRR(c, 16, hipY - 34, 18, 16, 3, P.shirtD);
+  } else if (who === 'neide') {
+    for (let i = 0; i < 9; i++) circ(c, -28 + (i % 3) * 26 + (Math.floor(i / 3) % 2) * 10, shY + 22 + Math.floor(i / 3) * 24, 3, 'rgba(255,255,255,.35)');
+    c.beginPath(); c.arc(0, shY - 4, 16, 0.1, Math.PI - 0.1); c.strokeStyle = '#fff'; c.lineWidth = 4; c.stroke();
+  } else if (who === 'carlos') {
+    c.save(); c.clip(); c.globalAlpha = 0.18; c.fillStyle = '#0b3a5c';
+    for (let x = -40; x < 40; x += 13) c.fillRect(x, shY - 10, 4, 120);
+    for (let y = shY; y < hipY + 10; y += 13) c.fillRect(-45, y, 90, 4);
+    c.restore();
+    c.beginPath(); c.moveTo(-14, shY - 6); c.lineTo(-2, shY + 10); c.lineTo(-4, shY - 6); c.moveTo(14, shY - 6); c.lineTo(2, shY + 10); c.lineTo(4, shY - 6); c.fillStyle = '#E8F1F8'; c.fill();
+    for (let i = 0; i < 4; i++) circ(c, 0, shY + 18 + i * 20, 2.4, '#E8F1F8');
+  } else if (P.shirtD) {
+    c.fillStyle = 'rgba(0,0,0,.08)'; c.fillRect(-35, hipY - 14, 70, 8);
+  }
+  // braços
+  const g = speaking(who, t) * (o.gest === false ? 0 : 1);
+  const ht = handTargets(o.pose || 'down', shY, headY, t, g);
+  const SL = [-34, shY + 10], SR = [34, shY + 10];
+  if (ht.prop === 'phone') phoneProp(c, 0, shY + 50, -0.05, o.lit !== false);
+  if (ht.prop === 'phoneUp') phoneProp(c, 0, shY + 24, 0, o.lit !== false);
+  arm(c, SL, ht.L, -1, P.shirt, P.skin);
+  arm(c, SR, ht.R, 1, P.shirt, P.skin);
+  if (o.pose === 'thumb') { c.fillStyle = P.skin; rr(c, ht.R[0] - 3, ht.R[1] - 20, 7, 16, 3); c.fill(); }
+  // cabeça
+  c.save(); c.translate(0, headY); c.rotate((o.tilt || 0) + talk * Math.sin(t * 3.1) * 0.04);
+  if (o.glow) { const gr = c.createRadialGradient(0, 30, 5, 0, 30, 70); gr.addColorStop(0, 'rgba(158,231,255,.35)'); gr.addColorStop(1, 'rgba(158,231,255,0)'); c.fillStyle = gr; c.fillRect(-70, -40, 140, 140); }
+  drawHead(c, P, o);
+  c.restore();
+  c.restore();
+}
+
+// só a cabeça (avatares)
+function avatar(c, who, x, y, r, o = {}) {
+  c.save(); c.translate(x, y);
+  circ(c, 0, 0, r, o.bg || COL[who] || '#888');
+  c.save(); c.beginPath(); c.arc(0, 0, r, 0, TAU); c.clip();
+  const s = r / 46; c.scale(s, s); c.translate(0, 10);
+  if (who === 'veri') { c.translate(0, 40); veriBody(c, { t: o.t || 0, mood: o.mood || 'happy', s: 0.62, noArms: true }); }
+  else { const P = CH[who]; c.fillStyle = P.shirt; ell(c, 0, 70, 46, 30, P.shirt); drawHead(c, P, Object.assign({ t: o.t || 0 }, o)); }
+  c.restore();
+  if (o.ring !== false) { c.beginPath(); c.arc(0, 0, r, 0, TAU); c.strokeStyle = o.ring || '#fff'; c.lineWidth = Math.max(2, r * 0.09); c.stroke(); }
+  c.restore();
+}
+
+// ===================== VERI (narrador) =====================
+function veriBody(c, o) {
+  const t = o.t || 0, talk = o.talk || 0, s = o.s || 1;
+  const md = o.mood || 'happy';
+  c.save(); c.scale(s, s);
+  const bounce = o.still ? 0 : Math.sin(t * 3.2) * 4;
+  c.translate(0, bounce);
+  // pés
+  if (!o.noArms) { ell(c, -32, -8 - bounce, 24, 12, '#FFC93C'); ell(c, 32, -8 - bounce, 24, 12, '#FFC93C'); c.fillStyle = '#fff'; c.fillRect(-52, -6 - bounce, 40, 3); c.fillRect(12, -6 - bounce, 40, 3); }
+  // antena
+  const aw = Math.sin(t * 2.4) * 8;
+  c.beginPath(); c.moveTo(0, -182); c.quadraticCurveTo(aw * 0.5, -205, 6 + aw, -222); c.strokeStyle = '#178A80'; c.lineWidth = 6; c.lineCap = 'round'; c.stroke();
+  const glow = c.createRadialGradient(6 + aw, -232, 2, 6 + aw, -232, 30); glow.addColorStop(0, 'rgba(255,214,60,.7)'); glow.addColorStop(1, 'rgba(255,214,60,0)');
+  c.fillStyle = glow; c.fillRect(aw - 30, -268, 72, 72);
+  circ(c, 6 + aw, -232, 14, '#FFD23F');
+  line(c, [[aw - 0.5, -232], [aw + 4.5, -226], [aw + 13, -238]], '#178A80', 3.5);
+  // corpo
+  const gb = c.createLinearGradient(0, -190, 0, -10); gb.addColorStop(0, '#34D1C3'); gb.addColorStop(1, '#1A9C91');
+  c.beginPath(); c.ellipse(0, -98, 80, 88, 0, 0, TAU); c.fillStyle = gb; c.fill();
+  ell(c, 0, -52, 50, 36, '#BFF3EC');
+  // selo ✓ na barriga
+  circ(c, 0, -50, 17, '#fff'); line(c, [[-8, -50], [-2, -43], [9, -57]], '#22B5A8', 5);
+  // gravata borboleta
+  c.fillStyle = '#E63946'; c.beginPath(); c.moveTo(0, -88); c.lineTo(-16, -97); c.lineTo(-16, -79); c.closePath(); c.fill();
+  c.beginPath(); c.moveTo(0, -88); c.lineTo(16, -97); c.lineTo(16, -79); c.closePath(); c.fill(); circ(c, 0, -88, 4.5, '#B5232F');
+  // olhos
+  const blink = eyesBlink(t, 5.2) && !o.noBlink;
+  const look = o.look || 0, lookY = o.lookY || 0;
+  for (const sd of [-1, 1]) {
+    const ex = sd * 27, ey = -128;
+    if (o.lupaEye && sd === 1) continue;
+    if (blink) { line(c, [[ex - 14, ey + 2], [ex, ey + 7], [ex + 14, ey + 2]], '#0E4F49', 4); continue; }
+    ell(c, ex, ey, 18.5, 23, '#fff');
+    circ(c, ex + look * 6, ey + 3 + lookY * 5, md === 'surprised' ? 8 : 10.5, '#14213D');
+    circ(c, ex + look * 6 + 4, ey - 2 + lookY * 5, 3.5, '#fff');
+  }
+  // sobrancelhas
+  const bm = { happy: [-2, 2], excited: [-6, -4], wink: [-2, 2], serious: [5, -3], surprised: [-9, -6], proud: [-3, 1] }[md] || [0, 0];
+  for (const sd of [-1, 1]) line(c, [[sd * 12, -156 + bm[0]], [sd * 40, -158 + bm[1]]], '#0E4F49', 6);
+  // bochechas
+  circ(c, -52, -98, 9, 'rgba(255,110,140,.35)'); circ(c, 52, -98, 9, 'rgba(255,110,140,.35)');
+  // boca
+  if (talk > 0.04) {
+    const op = 3 + talk * 15;
+    c.beginPath(); c.moveTo(-17, -100); c.quadraticCurveTo(0, -100 + op * 2.1, 17, -100); c.quadraticCurveTo(0, -97, -17, -100); c.fillStyle = '#5B1F1F'; c.fill();
+    if (op > 8) ell(c, 0, -100 + op * 1.15, 7, op * 0.32, '#F07A8A');
+  } else {
+    c.beginPath(); c.moveTo(-15, -101); c.quadraticCurveTo(0, md === 'serious' ? -96 : -86, 15, -101);
+    if (md === 'serious') { c.strokeStyle = '#5B1F1F'; c.lineWidth = 4; c.stroke(); } else { c.quadraticCurveTo(0, -97, -15, -101); c.fillStyle = '#5B1F1F'; c.fill(); }
+  }
+  c.restore();
+}
+
+// Veri com braços e acessórios. o.arms: 'wave'|'present'|'point'|'lupa'|'down'|'hips'|'up'|'stop'
+function veri(c, o) {
+  const t = o.t || 0, s = o.s || 1;
+  c.save(); c.translate(o.x, o.y);
+  if (o.rot) c.rotate(o.rot);
+  c.scale(o.flip ? -1 : 1, 1);
+  const bounce = Math.sin(t * 3.2) * 4 * s;
+  // braços atrás/na frente
+  const SL = [-74 * s, -100 * s + bounce], SR = [74 * s, -100 * s + bounce];
+  let L = [-100 * s, -40 * s], R = [100 * s, -40 * s];
+  const g = o.gest || 0;
+  switch (o.arms) {
+    case 'wave': R = [125 * s, -190 * s + Math.sin(t * 10) * 14 * s]; break;
+    case 'present': L = [-130 * s, -110 * s + Math.sin(t * 2) * 4]; R = [130 * s, -110 * s + Math.cos(t * 2) * 4]; break;
+    case 'point': R = [140 * s, -170 * s + Math.sin(t * 3) * 5]; break;
+    case 'pointUp': R = [110 * s, -230 * s + Math.sin(t * 3) * 5]; break;
+    case 'lupa': R = [120 * s, -120 * s + Math.sin(t * 2.5) * 6 * s]; break;
+    case 'lupaEye': R = [38 * s, -110 * s]; break;
+    case 'hips': L = [-88 * s, -70 * s]; R = [88 * s, -70 * s]; break;
+    case 'up': L = [-120 * s, -210 * s + Math.sin(t * 9) * 8]; R = [120 * s, -210 * s + Math.cos(t * 9) * 8]; break;
+    case 'stop': R = [120 * s, -150 * s]; L = [-100 * s, -40 * s]; break;
+    case 'thumb': R = [125 * s, -130 * s]; break;
+  }
+  if (g && o.arms !== 'lupa' && o.arms !== 'lupaEye') { L = [lerp(L[0], -120 * s, g), lerp(L[1], (-120 + Math.sin(t * 3.7) * 22) * s, g)]; }
+  const armDraw = (S, Hh) => {
+    c.beginPath(); c.moveTo(S[0], S[1]); c.quadraticCurveTo((S[0] + Hh[0]) / 2, (S[1] + Hh[1]) / 2 + 22 * s, Hh[0], Hh[1]);
+    c.strokeStyle = '#1A9C91'; c.lineWidth = 15 * s; c.lineCap = 'round'; c.stroke();
+    circ(c, Hh[0], Hh[1], 15 * s, '#fff'); c.beginPath(); c.arc(Hh[0], Hh[1], 15 * s, 0, TAU); c.strokeStyle = '#d6dde5'; c.lineWidth = 2; c.stroke();
+  };
+  armDraw(SL, L);
+  veriBody(c, Object.assign({}, o, { s, lupaEye: o.arms === 'lupaEye' }));
+  armDraw(SR, R);
+  if (o.arms === 'thumb') { fillRR(c, R[0] - 5 * s, R[1] - 30 * s, 10 * s, 22 * s, 5 * s, '#fff'); }
+  if (o.arms === 'stop') { fillRR(c, R[0] - 13 * s, R[1] - 34 * s, 26 * s, 30 * s, 9 * s, '#fff'); }
+  if (o.arms === 'lupa' || o.arms === 'lupaEye') lupa(c, o.arms === 'lupaEye' ? 27 * s : R[0] + 30 * s, o.arms === 'lupaEye' ? -128 * s + bounce : R[1] - 48 * s, s, t, o.arms === 'lupaEye');
+  c.restore();
+}
+
+function lupa(c, x, y, s, t, eye) {
+  c.save(); c.translate(x, y); c.scale(s, s);
+  // cabo
+  if (eye) line(c, [[24, 26], [62, 74]], '#8B4513', 14); else line(c, [[-22, 24], [-50, 56]], '#8B4513', 14);
+  c.beginPath(); c.arc(0, 0, 36, 0, TAU); c.fillStyle = 'rgba(190,235,255,.55)'; c.fill();
+  if (eye) {
+    c.save(); c.beginPath(); c.arc(0, 0, 33, 0, TAU); c.clip();
+    ell(c, 0, 0, 28, 34, '#fff'); circ(c, Math.sin(t * 2) * 4, 4, 15, '#14213D'); circ(c, 6, -4, 5, '#fff');
+    c.restore();
+  }
+  c.beginPath(); c.arc(0, 0, 36, 0, TAU); c.strokeStyle = '#3D3D3D'; c.lineWidth = 9; c.stroke();
+  c.beginPath(); c.arc(0, 0, 26, Math.PI * 1.15, Math.PI * 1.45); c.strokeStyle = 'rgba(255,255,255,.85)'; c.lineWidth = 5; c.stroke();
+  c.restore();
+}
+
+// ===================== cenários =====================
+const THEMES = {
+  rafa:  { wall: '#F6D7A7', wall2: '#EFC48D', floor: '#B97A4E', floorL: '#A66A40', sofa: '#2A9D8F', sofaL: '#3DB5A6', rug: '#C8553D', curtain: '#D9534F' },
+  ze:    { wall: '#E9DCC0', wall2: '#DCCBA6', floor: '#8C6A4F', floorL: '#7A5B42', sofa: '#8D6E63', sofaL: '#A1887F', rug: '#5B8C5A', curtain: '#6B8E4E' },
+  neide: { wall: '#E8D5F2', wall2: '#D9C1E8', floor: '#9C7A5B', floorL: '#8A6B4E', sofa: '#F4A261', sofaL: '#F6B57F', rug: '#2A9D8F', curtain: '#8E4FC9' },
+};
+
+function sky(c, x, y, w, h, t, kind = 'day') {
+  const g = c.createLinearGradient(0, y, 0, y + h);
+  if (kind === 'day') { g.addColorStop(0, '#7CC6F2'); g.addColorStop(1, '#D8F0FF'); }
+  else { g.addColorStop(0, '#F9A86A'); g.addColorStop(1, '#FDE3B0'); }
+  c.fillStyle = g; c.fillRect(x, y, w, h);
+  circ(c, x + w * 0.75, y + h * 0.3, 16, kind === 'day' ? '#FFF3B0' : '#FFE08A');
+  for (let i = 0; i < 2; i++) {
+    const cx = x + ((t * 6 + i * 90) % (w + 80)) - 40, cy = y + 30 + i * 40;
+    ell(c, cx, cy, 24, 9, 'rgba(255,255,255,.9)'); ell(c, cx + 14, cy - 6, 14, 9, 'rgba(255,255,255,.9)');
+  }
+  // prédios
+  c.fillStyle = 'rgba(70,90,130,.45)';
+  const bs = [[0, 60, 30], [28, 90, 26], [52, 50, 34], [84, 110, 22], [104, 70, 30], [132, 95, 28]];
+  for (const [bx, bh, bw] of bs) if (bx < w) c.fillRect(x + bx, y + h - bh * h / 190, Math.min(bw, w - bx), bh * h / 190);
+}
+
+function windowFrame(c, x, y, w, h, t, theme, kind) {
+  c.save(); rr(c, x, y, w, h, 6); c.clip(); sky(c, x, y, w, h, t, kind); c.restore();
+  c.strokeStyle = '#fff'; c.lineWidth = 10; rr(c, x, y, w, h, 6); c.stroke();
+  c.lineWidth = 6; c.beginPath(); c.moveTo(x + w / 2, y); c.lineTo(x + w / 2, y + h); c.moveTo(x, y + h / 2); c.lineTo(x + w, y + h / 2); c.stroke();
+  fillRR(c, x - 12, y + h + 2, w + 24, 10, 4, '#fff');
+  // cortinas
+  const sw = Math.sin(t * 1.3) * 3;
+  for (const sd of [0, 1]) {
+    const cx = sd ? x + w + 4 : x - 4;
+    c.beginPath(); c.moveTo(cx - 22, y - 16); c.lineTo(cx + 22, y - 16);
+    c.quadraticCurveTo(cx + 10 + sw, y + h * 0.5, cx + 18 + sw, y + h + 30); c.lineTo(cx - 18 + sw, y + h + 30);
+    c.quadraticCurveTo(cx - 10 + sw, y + h * 0.5, cx - 22, y - 16); c.fillStyle = theme.curtain; c.fill();
+    c.strokeStyle = 'rgba(0,0,0,.12)'; c.lineWidth = 2; c.beginPath(); c.moveTo(cx, y - 10); c.lineTo(cx + sw, y + h + 26); c.stroke();
+  }
+  fillRR(c, x - 34, y - 22, w + 68, 8, 4, '#6D4C41');
+}
+
+function frame(c, x, y, w, h, fn) {
+  fillRR(c, x - 6, y - 6, w + 12, h + 12, 4, '#8B5A3C'); c.fillStyle = '#FFF8EC'; c.fillRect(x, y, w, h);
+  c.save(); c.beginPath(); c.rect(x, y, w, h); c.clip(); fn(); c.restore();
+}
+
+function clock(c, x, y, r, t) {
+  circ(c, x, y, r + 4, '#6D4C41'); circ(c, x, y, r, '#fff');
+  for (let i = 0; i < 12; i++) { const a = i / 12 * TAU; circ(c, x + Math.cos(a) * r * 0.8, y + Math.sin(a) * r * 0.8, 1.6, '#333'); }
+  const ha = -Math.PI / 2 + TAU * (4 / 12) + t * 0.002, ma = -Math.PI / 2 + t * 0.105;
+  line(c, [[x, y], [x + Math.cos(ha) * r * 0.5, y + Math.sin(ha) * r * 0.5]], '#333', 3);
+  line(c, [[x, y], [x + Math.cos(ma) * r * 0.75, y + Math.sin(ma) * r * 0.75]], '#333', 2);
+  line(c, [[x, y], [x + Math.cos(t * 6.28 / 60 * 6) * r * 0.8, y + Math.sin(t * 6.28 / 60 * 6) * r * 0.8]], '#E63946', 1);
+  circ(c, x, y, 2.5, '#333');
+}
+
+function lamp(c, x, y, on = true) {
+  if (on) { const g = c.createRadialGradient(x, y + 10, 5, x, y + 10, 140); g.addColorStop(0, 'rgba(255,230,150,.55)'); g.addColorStop(1, 'rgba(255,230,150,0)'); c.fillStyle = g; c.fillRect(x - 140, y - 130, 280, 280); }
+  line(c, [[x, y + 20], [x, y + 220]], '#5D4037', 5); ell(c, x, y + 222, 26, 6, '#5D4037');
+  c.beginPath(); c.moveTo(x - 20, y - 20); c.lineTo(x + 20, y - 20); c.lineTo(x + 32, y + 22); c.lineTo(x - 32, y + 22); c.closePath(); c.fillStyle = on ? '#FFE08A' : '#E0C98A'; c.fill();
+}
+
+function plant(c, x, y, t, s = 1) {
+  c.save(); c.translate(x, y); c.scale(s, s);
+  for (let i = 0; i < 7; i++) {
+    const a = -Math.PI / 2 + (i - 3) * 0.32 + Math.sin(t * 1.5 + i) * 0.04;
+    c.save(); c.rotate(a + Math.PI / 2); ell(c, 0, -48, 12, 40, i % 2 ? '#3E8E41' : '#4CAF50'); c.restore();
+  }
+  c.beginPath(); c.moveTo(-28, -10); c.lineTo(28, -10); c.lineTo(20, 40); c.lineTo(-20, 40); c.closePath(); c.fillStyle = '#C66B3D'; c.fill();
+  c.fillStyle = '#A85A30'; c.fillRect(-30, -14, 60, 10);
+  c.restore();
+}
+
+function mug(c, x, y, t, col = '#fff') {
+  fillRR(c, x - 10, y - 18, 20, 20, 4, col);
+  c.beginPath(); c.arc(x + 11, y - 9, 6, -Math.PI / 2, Math.PI / 2); c.strokeStyle = col; c.lineWidth = 3; c.stroke();
+  for (let i = 0; i < 2; i++) {
+    const k = (t * 0.6 + i * 0.5) % 1; c.globalAlpha = (1 - k) * 0.6;
+    c.beginPath(); c.moveTo(x - 3 + i * 6, y - 22 - k * 30); c.quadraticCurveTo(x + 4 + i * 6, y - 30 - k * 30, x - 3 + i * 6, y - 40 - k * 30);
+    c.strokeStyle = '#fff'; c.lineWidth = 2.5; c.stroke(); c.globalAlpha = 1;
+  }
+}
+
+function sofa(c, x, y, w, th) {
+  // x,y = canto superior esquerdo do encosto; assento em y+105
+  shadowed(c, 20, 'rgba(0,0,0,.18)', 10, () => fillRR(c, x, y, w, 150, 30, th.sofa));
+  fillRR(c, x + 20, y + 12, w - 40, 80, 22, th.sofaL);
+  fillRR(c, x + 40, y + 98, (w - 80) / 2 - 3, 50, 14, th.sofaL); fillRR(c, x + w / 2 + 3, y + 98, (w - 80) / 2 - 3, 50, 14, th.sofaL);
+  fillRR(c, x - 20, y + 50, 62, 120, 24, th.sofa); fillRR(c, x + w - 42, y + 50, 62, 120, 24, th.sofa);
+  fillRR(c, x + 10, y + 165, 14, 18, 3, '#4E342E'); fillRR(c, x + w - 24, y + 165, 14, 18, 3, '#4E342E');
+}
+
+function livingRoom(c, t, th = THEMES.rafa, o = {}) {
+  const g = c.createLinearGradient(0, 0, 0, 640); g.addColorStop(0, th.wall); g.addColorStop(1, th.wall2);
+  c.fillStyle = g; c.fillRect(-300, 0, 1140, 650);
+  c.fillStyle = 'rgba(255,255,255,.08)'; for (let x = -300; x < 840; x += 36) c.fillRect(x, 0, 14, 640);
+  // piso
+  c.fillStyle = th.floor; c.fillRect(-300, 640, 1140, 340);
+  c.fillStyle = th.floorL; for (let yy = 660; yy < 980; yy += 34) c.fillRect(-300, yy, 1140, 3);
+  for (let yy = 660, r = 0; yy < 980; yy += 34, r++) for (let xx = -300 + (r % 2) * 60; xx < 840; xx += 120) c.fillRect(xx, yy, 3, 34);
+  c.fillStyle = '#7B4A2E'; c.fillRect(-300, 632, 1140, 14);
+  windowFrame(c, 50, 170, 150, 190, t, th, o.sky || 'warm');
+  frame(c, 300, 200, 100, 74, () => {
+    c.fillStyle = '#BDE0FE'; c.fillRect(300, 200, 100, 74); c.fillStyle = '#90BE6D'; c.fillRect(300, 250, 100, 24);
+    [['ze', 318], ['lucia', 340], ['rafa', 362], ['neide', 384]].forEach(([w, xx], i) => { circ(c, xx, 238 - (i === 2 ? 4 : 0), 9, CH[w].skin); c.fillStyle = CH[w].shirt; c.fillRect(xx - 8, 247, 16, 20); });
+  });
+  frame(c, 425, 230, 52, 64, () => { c.fillStyle = '#FFD6A5'; c.fillRect(425, 230, 52, 64); c.beginPath(); c.moveTo(425, 294); c.lineTo(450, 255); c.lineTo(477, 294); c.fillStyle = '#6A994E'; c.fill(); circ(c, 465, 245, 7, '#F77F00'); });
+  clock(c, 245, 110, 26, t);
+  lamp(c, 482, 400, o.lampOn !== false);
+  plant(c, 30, 600, t, 0.95);
+  ell(c, 270, 770, 240, 52, th.rug); ell(c, 270, 770, 200, 40, 'rgba(255,255,255,.15)'); ell(c, 270, 770, 160, 30, th.rug);
+  sofa(c, 95, 470, 350, th);
+  // mesinha lateral
+  fillRR(c, 455, 600, 60, 10, 3, '#6D4C41'); c.fillStyle = '#6D4C41'; c.fillRect(462, 610, 6, 60); c.fillRect(502, 610, 6, 60);
+  mug(c, 480, 600, t);
+}
+
+function kitchen(c, t, o = {}) {
+  c.fillStyle = '#CFE8E0'; c.fillRect(-300, 0, 1140, 700);
+  // azulejos
+  c.fillStyle = '#E8F5F1'; c.fillRect(-300, 380, 1140, 190);
+  c.strokeStyle = 'rgba(80,140,120,.25)'; c.lineWidth = 2;
+  for (let x = -300; x < 840; x += 30) { c.beginPath(); c.moveTo(x, 380); c.lineTo(x, 570); c.stroke(); }
+  for (let y = 380; y < 570; y += 30) { c.beginPath(); c.moveTo(-300, y); c.lineTo(840, y); c.stroke(); }
+  // armários altos
+  for (let i = 0; i < 4; i++) { fillRR(c, 150 + i * 98, 90, 92, 200, 6, '#F1FAEE'); fillRR(c, 150 + i * 98 + (i % 2 ? 10 : 70), 180, 8, 30, 4, '#A8DADC'); }
+  windowFrame(c, -10, 130, 130, 160, t, THEMES.rafa, 'day');
+  // geladeira
+  fillRR(c, 455, 150, 120, 560, 14, '#DDE6ED'); c.fillStyle = '#B8C4CF'; c.fillRect(455, 360, 120, 5); fillRR(c, 470, 250, 8, 70, 4, '#9AA8B6'); fillRR(c, 470, 400, 8, 70, 4, '#9AA8B6');
+  fillRR(c, 490, 190, 40, 30, 4, '#FFC93C'); fillRR(c, 500, 230, 30, 22, 4, '#E63946');
+  // panelas
+  for (let i = 0; i < 3; i++) { const sw = Math.sin(t * 1.2 + i) * 0.04; c.save(); c.translate(170 + i * 50, 320); c.rotate(sw); line(c, [[0, 0], [0, 20]], '#555', 3); circ(c, 0, 38, 18 - i * 2, ['#E76F51', '#2A9D8F', '#E9C46A'][i]); c.restore(); }
+  // piso
+  for (let y = 700; y < 980; y += 50) for (let x = -300; x < 840; x += 50) { c.fillStyle = ((x + y) / 50) % 2 ? '#F4EBD9' : '#D9C9A8'; c.fillRect(x, y, 50, 50); }
+}
+function kitchenCounter(c, t, o = {}) {
+  fillRR(c, -40, 560, 500, 26, 6, '#6D4C41');
+  c.fillStyle = '#E9C46A'; c.fillRect(-30, 586, 480, 130);
+  for (let i = 0; i < 4; i++) { c.strokeStyle = 'rgba(0,0,0,.12)'; c.lineWidth = 3; rr(c, -20 + i * 118, 600, 108, 104, 6); c.stroke(); fillRR(c, 25 + i * 118, 615, 20, 6, 3, '#8D6E63'); }
+  // tábua e legumes
+  if (!o.bags) {
+    fillRR(c, 40, 545, 110, 18, 5, '#D4A373'); circ(c, 70, 540, 12, '#E63946'); circ(c, 100, 542, 10, '#F4A261'); ell(c, 128, 545, 14, 7, '#6A994E');
+  } else {
+    groceries(c, 300, 560, t, 78);
+    return;
+  }
+  circ(c, 380, 540, 26, '#E9C46A'); circ(c, 368, 530, 10, '#F4A261'); circ(c, 390, 528, 10, '#E63946');
+}
+
+function waterPack(c, x, y, s = 1) {
+  c.save(); c.translate(x, y); c.scale(s, s);
+  for (let i = 0; i < 3; i++) { fillRR(c, -27 + i * 18, -44, 16, 44, 5, '#7FC8F8'); fillRR(c, -23 + i * 18, -52, 8, 9, 2, '#1E6091'); c.fillStyle = '#fff'; c.fillRect(-27 + i * 18, -30, 16, 10); }
+  c.fillStyle = 'rgba(255,255,255,.35)'; c.fillRect(-29, -40, 54, 4);
+  c.restore();
+}
+function candleBox(c, x, y, s = 1) {
+  c.save(); c.translate(x, y); c.scale(s, s);
+  fillRR(c, -26, -30, 52, 30, 3, '#F4E1C1'); c.fillStyle = '#E63946'; c.fillRect(-26, -22, 52, 9);
+  txt(c, 'VELAS', 0, -17, 9, '#fff', { w: 800 });
+  c.restore();
+}
+function candle(c, x, y, lit, t, s = 1) {
+  c.save(); c.translate(x, y); c.scale(s, s);
+  fillRR(c, -5, -30, 10, 30, 2, '#FFF8E1'); line(c, [[0, -30], [0, -35]], '#333', 1.5);
+  if (lit) { const f = 1 + Math.sin(t * 20) * 0.1; ell(c, 0, -42, 4 * f, 8 * f, '#FFB703'); ell(c, 0, -40, 2, 4, '#FFF3B0'); }
+  c.restore();
+}
+function groceries(c, x, y, t, gap = 95) {
+  // sacolas
+  for (let i = 0; i < 3; i++) {
+    const bx = x + i * gap;
+    c.beginPath(); c.moveTo(bx, y); c.lineTo(bx + 70, y); c.lineTo(bx + 64, y - 70); c.lineTo(bx + 6, y - 70); c.closePath(); c.fillStyle = '#F1FAEE'; c.fill();
+    c.beginPath(); c.arc(bx + 35, y - 70, 18, Math.PI, 0); c.strokeStyle = '#ccc'; c.lineWidth = 3; c.stroke();
+    if (i === 0) { candle(c, bx + 20, y - 62, false, t); candle(c, bx + 34, y - 66, false, t); candle(c, bx + 48, y - 60, false, t); }
+    if (i === 1) { waterPack(c, bx + 35, y - 58, 0.8); }
+    if (i === 2) { fillRR(c, bx + 14, y - 92, 24, 30, 3, '#FFD166'); fillRR(c, bx + 36, y - 88, 22, 26, 3, '#E63946'); }
+  }
+}
+
+// ---------- mercado ----------
+const SHELF_TYPES = ['candle', 'water', 'food', 'cans'];
+const SHELF_LABEL = { candle: 'VELAS', water: 'ÁGUA', food: 'ALIMENTOS', cans: 'ENLATADOS' };
+function product(c, type, x, y, i) {
+  switch (type) {
+    case 'candle': fillRR(c, x - 4, y - 26, 8, 26, 2, i % 3 ? '#FFF8E1' : '#FFE8A3'); line(c, [[x, y - 26], [x, y - 30]], '#333', 1.2); break;
+    case 'water': fillRR(c, x - 7, y - 34, 14, 34, 4, '#7FC8F8'); fillRR(c, x - 3, y - 39, 6, 6, 2, '#1E6091'); c.fillStyle = '#fff'; c.fillRect(x - 7, y - 22, 14, 7); break;
+    case 'food': fillRR(c, x - 9, y - 28, 18, 28, 3, ['#FFD166', '#F4A261', '#EAE2B7'][i % 3]); c.fillStyle = 'rgba(0,0,0,.15)'; c.fillRect(x - 9, y - 18, 18, 5); break;
+    case 'cans': fillRR(c, x - 7, y - 20, 14, 20, 3, ['#E63946', '#2A9D8F', '#F77F00'][i % 3]); c.fillStyle = 'rgba(255,255,255,.5)'; c.fillRect(x - 7, y - 14, 14, 4); break;
+  }
+}
+// tempo de "sumir" do produto
+function goneAt(type, idx) {
+  const h = hash(idx * 3.7 + type.length);
+  const base = M.s2 + 2.5;
+  if (type === 'candle') return base + 2 + h * (M.freeze1 - base - 3);
+  if (type === 'water') return base + 4 + h * (M.freeze1 - base - 4);
+  return h < 0.55 ? base + 6 + h * 18 : 1e9;
+}
+function market(c, te, o = {}) {
+  // teto e parede
+  c.fillStyle = '#EEF2F5'; c.fillRect(-400, 0, 1400, 210);
+  for (let x = -380; x < 1000; x += 160) { fillRR(c, x, 40, 110, 14, 7, '#fff'); const g = c.createLinearGradient(0, 54, 0, 200); g.addColorStop(0, 'rgba(255,255,230,.6)'); g.addColorStop(1, 'rgba(255,255,230,0)'); c.fillStyle = g; c.beginPath(); c.moveTo(x, 54); c.lineTo(x + 110, 54); c.lineTo(x + 150, 200); c.lineTo(x - 40, 200); c.fill(); }
+  c.fillStyle = '#F8F3E6'; c.fillRect(-400, 150, 1400, 520);
+  fillRR(c, -60, 160, 660, 56, 10, '#E63946');
+  txt(c, 'SUPERMERCADO DO BAIRRO', 270, 189, 30, '#fff', { w: 800 });
+  // gôndolas
+  const units = [[-330, 'cans'], [-120, 'candle'], [90, 'water'], [300, 'food'], [510, 'cans'], [720, 'water']];
+  let idx = 0;
+  for (const [ux, type] of units) {
+    fillRR(c, ux, 250, 200, 420, 6, '#C9D6DF');
+    fillRR(c, ux + 6, 256, 188, 408, 4, '#E3EBF0');
+    // placa pendurada
+    line(c, [[ux + 70, 214], [ux + 70, 232]], '#888', 2); line(c, [[ux + 130, 214], [ux + 130, 232]], '#888', 2);
+    fillRR(c, ux + 50, 230, 100, 28, 6, '#FFC93C'); txt(c, SHELF_LABEL[type], ux + 100, 245, 15, '#14213D', { w: 800 });
+    for (let r = 0; r < 4; r++) {
+      const sy = 340 + r * 92;
+      for (let k = 0; k < 9; k++) {
+        const id = idx++; const px = ux + 20 + k * 20;
+        if (te < goneAt(type, id)) product(c, type, px, sy - 2, id);
+      }
+      fillRR(c, ux + 4, sy, 192, 10, 3, '#9FB3C2');
+      c.fillStyle = '#FFE066'; c.fillRect(ux + 20, sy + 2, 26, 6);
+    }
+    if (type === 'candle' && te > M.s2_chaos - 1) {
+      const k = eob(pr(te, M.s2_chaos - 1, M.s2_chaos - 0.4));
+      c.save(); c.translate(ux + 100, 420); c.rotate(-0.12); c.scale(k, k); fillRR(c, -70, -22, 140, 44, 8, '#E63946'); txt(c, 'ESGOTADO', 0, 1, 24, '#fff'); c.restore();
+    }
+    if (type === 'water' && ux === 90 && te > M.freeze1 - 2.2) {
+      const k = eob(pr(te, M.freeze1 - 2.2, M.freeze1 - 1.6));
+      c.save(); c.translate(ux + 100, 520); c.rotate(0.1); c.scale(k, k); fillRR(c, -60, -20, 120, 40, 8, '#E63946'); txt(c, 'ACABOU!', 0, 1, 22, '#fff'); c.restore();
+    }
+  }
+  // piso
+  c.fillStyle = '#DCE3E8'; c.fillRect(-400, 668, 1400, 320);
+  c.strokeStyle = 'rgba(0,0,0,.07)'; c.lineWidth = 2;
+  for (let y = 690; y < 980; y += 40) { c.beginPath(); c.moveTo(-400, y); c.lineTo(1000, y); c.stroke(); }
+  for (let x = -600; x < 1200; x += 70) { c.beginPath(); c.moveTo(270 + (x - 270) * 0.6, 668); c.lineTo(x, 980); c.stroke(); }
+}
+
+function cart(c, x, y, s, fill, t, flip) {
+  c.save(); c.translate(x, y); c.scale(flip ? -s : s, s);
+  // itens empilhados
+  const n = Math.floor(fill * 12);
+  for (let i = 0; i < n; i++) {
+    const ix = -46 + (i % 4) * 26, iy = -76 - Math.floor(i / 4) * 16;
+    if (i % 3 === 0) waterPack(c, ix + 8, iy + 20, 0.45);
+    else if (i % 3 === 1) candleBox(c, ix + 8, iy + 14, 0.5);
+    else { fillRR(c, ix, iy - 10, 18, 24, 3, ['#FFD166', '#E63946', '#F4A261'][i % 3]); }
+  }
+  c.strokeStyle = '#7D8B99'; c.lineWidth = 4;
+  c.beginPath(); c.moveTo(-60, -80); c.lineTo(60, -80); c.lineTo(50, -30); c.lineTo(-50, -30); c.closePath(); c.fillStyle = 'rgba(160,180,200,.25)'; c.fill(); c.stroke();
+  for (let i = -40; i <= 40; i += 16) { c.beginPath(); c.moveTo(i, -80); c.lineTo(i * 0.85, -30); c.stroke(); }
+  c.beginPath(); c.moveTo(-60, -80); c.lineTo(-78, -98); c.stroke(); fillRR(c, -90, -104, 22, 9, 4, '#E63946');
+  c.beginPath(); c.moveTo(-45, -30); c.lineTo(-40, -10); c.moveTo(45, -30); c.lineTo(40, -10); c.stroke();
+  const wr = t * 8;
+  for (const wx of [-38, 38]) { circ(c, wx, -6, 7, '#333'); line(c, [[wx, -6], [wx + Math.cos(wr) * 5, -6 + Math.sin(wr) * 5]], '#999', 2); }
+  c.restore();
+}
+
+function carlosRoom(c, t, o = {}) {
+  c.fillStyle = '#C9D8B6'; c.fillRect(-300, 0, 1140, 650);
+  c.fillStyle = '#B3C69C'; c.fillRect(-300, 430, 1140, 220);
+  c.fillStyle = '#8A9F73'; c.fillRect(-300, 425, 1140, 8);
+  // estante
+  fillRR(c, 10, 180, 170, 440, 6, '#6D4C41');
+  for (let r = 0; r < 4; r++) {
+    c.fillStyle = '#5D4037'; c.fillRect(18, 280 + r * 100, 154, 8);
+    for (let b = 0; b < 8; b++) { const bh = 60 + hash(r * 9 + b) * 28; c.fillStyle = ['#E63946', '#457B9D', '#F4A261', '#2A9D8F', '#E9C46A', '#8E4FC9'][(r + b) % 6]; c.fillRect(22 + b * 18, 280 + r * 100 - bh, 15, bh); }
+  }
+  windowFrame(c, 340, 160, 150, 180, t, { curtain: '#457B9D' }, 'day');
+  // quadro
+  frame(c, 230, 190, 70, 90, () => { c.fillStyle = '#A8DADC'; c.fillRect(230, 190, 70, 90); circ(c, 265, 225, 16, CH.carlos.skin); c.fillStyle = CH.carlos.shirt; c.fillRect(250, 245, 30, 35); });
+  // piso
+  c.fillStyle = '#A1887F'; c.fillRect(-300, 640, 1140, 340); c.fillStyle = '#8D6E63'; for (let y = 660; y < 980; y += 30) c.fillRect(-300, y, 1140, 3);
+  ell(c, 270, 780, 230, 55, '#457B9D'); ell(c, 270, 780, 190, 42, '#A8DADC'); ell(c, 270, 780, 150, 30, '#457B9D');
+  // poltrona
+  shadowed(c, 18, 'rgba(0,0,0,.2)', 8, () => fillRR(c, 170, 430, 200, 210, 40, '#9C4A2E'));
+  fillRR(c, 190, 450, 160, 120, 30, '#B85C38');
+  fillRR(c, 145, 540, 60, 130, 24, '#9C4A2E'); fillRR(c, 335, 540, 60, 130, 24, '#9C4A2E');
+  fillRR(c, 200, 575, 140, 55, 16, '#B85C38');
+  // mesinha + rádio + café
+  fillRR(c, 405, 590, 90, 12, 4, '#5D4037'); c.fillStyle = '#5D4037'; c.fillRect(415, 602, 7, 70); c.fillRect(478, 602, 7, 70);
+  fillRR(c, 415, 552, 50, 38, 6, '#E76F51'); circ(c, 430, 571, 9, '#333'); c.fillStyle = '#fff'; c.fillRect(444, 562, 14, 4); c.fillRect(444, 570, 14, 4);
+  mug(c, 478, 590, t, '#F1FAEE');
+  // gato dormindo
+  catSleep(c, 110, 790, t);
+}
+function catSleep(c, x, y, t) {
+  ell(c, x, y, 42, 20, '#F4A261'); circ(c, x + 34, y - 6, 15, '#F4A261');
+  c.beginPath(); c.moveTo(x + 26, y - 16); c.lineTo(x + 28, y - 30); c.lineTo(x + 36, y - 19); c.moveTo(x + 38, y - 18); c.lineTo(x + 46, y - 28); c.lineTo(x + 47, y - 13); c.fillStyle = '#F4A261'; c.fill();
+  line(c, [[x + 29, y - 5], [x + 34, y - 3]], '#6b3b1a', 2); line(c, [[x + 38, y - 4], [x + 43, y - 5]], '#6b3b1a', 2);
+  const tw = Math.sin(t * 2) * 10;
+  c.beginPath(); c.moveTo(x - 40, y + 2); c.quadraticCurveTo(x - 66, y - 4 + tw, x - 60, y - 24 + tw); c.strokeStyle = '#F4A261'; c.lineWidth = 9; c.lineCap = 'round'; c.stroke();
+  for (let i = 0; i < 3; i++) { const k = (t * 0.4 + i / 3) % 1; c.globalAlpha = Math.sin(k * Math.PI); txt(c, 'z', x + 50 + k * 26, y - 30 - k * 50, 14 + k * 10, '#14213D'); c.globalAlpha = 1; }
+}
+
+function zeRoom(c, t) {
+  livingRoom(c, t, THEMES.ze, { sky: 'day' });
+}
+function neideRoom(c, t) {
+  livingRoom(c, t, THEMES.neide, { sky: 'day' });
+  plant(c, 510, 610, t, 0.8);
+}
+
+// ---------- fundos gráficos ----------
+function gradBG(c, a, b) { const g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, a); g.addColorStop(1, b); c.fillStyle = g; c.fillRect(-300, -300, W + 600, H + 600); }
+function dots(c, t, col = 'rgba(255,255,255,.06)') { c.fillStyle = col; for (let y = 0; y < H; y += 32) for (let x = (y / 32 % 2) * 16; x < W; x += 32) { c.beginPath(); c.arc(x, y + (t * 10) % 32, 2, 0, TAU); c.fill(); } }
+
+// ===================== celular, ícones e sobreposições =====================
+function phoneFrame(c, cx, cy, w, h, fn) {
+  const x = cx - w / 2, y = cy - h / 2;
+  shadowed(c, 40, 'rgba(0,0,0,.45)', 16, () => fillRR(c, x, y, w, h, 40, '#1d1f2b'));
+  c.strokeStyle = '#3a3d52'; c.lineWidth = 3; rr(c, x + 2, y + 2, w - 4, h - 4, 38); c.stroke();
+  const sx = x + 12, sy = y + 12, sw = w - 24, sh = h - 24;
+  c.save(); rr(c, sx, sy, sw, sh, 30); c.clip(); fn(sx, sy, sw, sh); c.restore();
+  fillRR(c, cx - 40, y + 18, 80, 20, 10, '#1d1f2b');
+}
+
+const NAMECOL = { veri: '#178A80', rafa: '#D9601A', lucia: '#C2334B', ze: '#52733A', neide: '#7A3DB8', carlos: '#1F6A9C' };
+const URG = 'URGENTE! APAGÃO NACIONAL! Estão dizendo que o Brasil inteiro ficará sem energia por vários dias! Comprem velas, água e alimentos antes que acabem! COMPARTILHEM!';
+const CARLOS_MSG = 'Pessoal, fui pesquisar e não encontrei nenhuma fonte confiável confirmando esse apagão nacional. Não vamos espalhar essa informação sem confirmação!';
+
+function chatHeader(c, x, y, w, t, title = 'Família Unida', sub = 'Mãe, Vovô Zé, Tia Neide, Seu Carlos, você') {
+  c.fillStyle = '#1F7A6D'; c.fillRect(x, y, w, 92);
+  line(c, [[x + 24, y + 58], [x + 16, y + 66], [x + 24, y + 74]], '#fff', 3);
+  avatar(c, 'ze', x + 50, y + 66, 13, { t, ring: '#1F7A6D' }); avatar(c, 'neide', x + 64, y + 60, 13, { t, ring: '#1F7A6D' }); avatar(c, 'lucia', x + 64, y + 74, 13, { t, ring: '#1F7A6D' });
+  txt(c, title, x + 88, y + 58, 19, '#fff', { a: 'left', w: 800 });
+  heart(c, x + 88 + 128, y + 58, 7, '#FF8FA3');
+  txt(c, sub, x + 88, y + 78, 11.5, 'rgba(255,255,255,.8)', { a: 'left', w: 600 });
+}
+function chatBG(c, x, y, w, h) {
+  c.fillStyle = '#ECE5DD'; c.fillRect(x, y, w, h);
+  c.fillStyle = 'rgba(0,0,0,.035)';
+  for (let yy = y; yy < y + h; yy += 40) for (let xx = x + ((yy / 40) % 2) * 20; xx < x + w; xx += 40) { c.beginPath(); c.arc(xx, yy, 5, 0, TAU); c.fill(); }
+}
+function fwdArrow(c, x, y, col) { line(c, [[x, y + 4], [x + 4, y - 1], [x + 10, y - 1]], col, 1.8); line(c, [[x + 7, y - 4], [x + 10, y - 1], [x + 7, y + 2]], col, 1.8); }
+
+// msgs: {from, text, fwd, at, mine, img, dim}
+function chatScreen(c, x, y, w, h, msgs, t, o = {}) {
+  chatBG(c, x, y, w, h);
+  const top = y + 100, bottom = y + h - 66, maxW = w * 0.8;
+  const items = [];
+  let total = 0;
+  for (const m of msgs) {
+    if (t < m.at) continue;
+    const fs = o.fs || 15.5;
+    const lines = m.text ? wrap(c, m.text, maxW - 24, fs, 600) : [];
+    let bh = 14 + (m.mine ? 0 : 18) + (m.fwd ? 18 : 0) + lines.length * (fs * 1.3) + (m.img ? 110 : 0) + 16;
+    items.push({ m, lines, bh, fs }); total += bh + 10;
+  }
+  const avail = bottom - top;
+  let yy = top + Math.min(0, avail - total);
+  // rolagem suave
+  for (const it of items) {
+    const { m, lines, bh, fs } = it;
+    const k = eob(pr(t, m.at, m.at + 0.35));
+    const bw = Math.min(maxW, Math.max(m.img ? 190 : 0, ...lines.map(l => { c.font = `600 ${fs}px ${FD}`; return c.measureText(l).width + 26; }), m.fwd ? 210 : 120));
+    const bx = m.mine ? x + w - bw - 12 : x + 12;
+    c.save(); c.translate(bx + (m.mine ? bw : 0), yy); c.scale(k, k); c.translate(-(bx + (m.mine ? bw : 0)), -yy);
+    c.globalAlpha = m.dim && t > m.dim ? 0.45 : 1;
+    shadowed(c, 4, 'rgba(0,0,0,.15)', 1, () => fillRR(c, bx, yy, bw, bh, 12, m.mine ? '#DCF8C6' : '#fff'));
+    let cy = yy + 10;
+    if (!m.mine) { txt(c, CH_NAMES[m.from], bx + 12, cy + 7, 13.5, NAMECOL[m.from], { a: 'left', w: 800 }); cy += 18; }
+    if (m.fwd) { fwdArrow(c, bx + 12, cy + 7, '#8a8a8a'); txt(c, 'Encaminhada com frequência', bx + 28, cy + 7, 12, '#8a8a8a', { a: 'left', w: 600 }); cy += 18; }
+    if (m.img) { c.save(); rr(c, bx + 10, cy + 2, bw - 20, 102, 8); c.clip(); c.fillStyle = '#DCE3E8'; c.fillRect(bx + 10, cy + 2, bw - 20, 102); c.fillStyle = '#F8F3E6'; c.fillRect(bx + 10, cy + 2, bw - 20, 50); cart(c, bx + bw / 2, cy + 98, 0.85, 1, 0); c.restore(); cy += 110; }
+    for (const l of lines) { txt(c, l, bx + 12, cy + fs * 0.65, fs, '#1b1b1b', { a: 'left', w: 600 }); cy += fs * 1.3; }
+    txt(c, m.time || '16:42', bx + bw - 10, yy + bh - 9, 10.5, '#8a8a8a', { a: 'right', w: 600 });
+    if (m.mine) { line(c, [[bx + bw - 52, yy + bh - 9], [bx + bw - 48, yy + bh - 5], [bx + bw - 42, yy + bh - 13]], '#34B7F1', 1.8); line(c, [[bx + bw - 46, yy + bh - 7], [bx + bw - 44, yy + bh - 5], [bx + bw - 37, yy + bh - 13]], '#34B7F1', 1.8); }
+    // reações
+    if (m.react && t > m.react.at) {
+      const kk = eob(pr(t, m.react.at, m.react.at + 0.4));
+      c.save(); c.translate(bx + 30, yy + bh + 2); c.scale(kk, kk);
+      fillRR(c, -14, -12, 28 + (m.react.n - 1) * 22, 24, 12, '#fff');
+      for (let i = 0; i < m.react.n; i++) { const ix = i * 22; if (i % 2 === 0) heart(c, ix, 0, 6.5, '#E63946'); else thumbIcon(c, ix, 0, 0.55); }
+      c.restore();
+    }
+    c.restore();
+    yy += bh + 10 + (m.react ? 14 : 0);
+  }
+  chatHeader(c, x, y, w, t);
+  // caixa de texto
+  c.fillStyle = '#F0F0F0'; c.fillRect(x, y + h - 62, w, 62);
+  fillRR(c, x + 10, y + h - 52, w - 70, 40, 20, '#fff');
+  const typed = o.typing || '';
+  if (typed) {
+    const ls = wrap(c, typed, w - 100, 13, 600); const last = ls.slice(-1)[0] || '';
+    txt(c, (ls.length > 1 ? '…' : '') + last + ((t * 2) % 1 < 0.5 ? '|' : ''), x + 24, y + h - 32, 13, '#222', { a: 'left', w: 600 });
+  } else txt(c, 'Mensagem', x + 24, y + h - 32, 14, '#9a9a9a', { a: 'left', w: 600 });
+  circ(c, x + w - 32, y + h - 32, 21, '#1F7A6D');
+  c.beginPath(); c.moveTo(x + w - 41, y + h - 40); c.lineTo(x + w - 22, y + h - 32); c.lineTo(x + w - 41, y + h - 24); c.lineTo(x + w - 37, y + h - 32); c.closePath(); c.fillStyle = '#fff'; c.fill();
+}
+const CH_NAMES = { veri: 'Veri', rafa: 'Rafa', lucia: 'Mãe Lúcia', ze: 'Vovô Zé', neide: 'Tia Neide', carlos: 'Seu Carlos' };
+
+function forwardScreen(c, x, y, w, h, t, t0) {
+  c.fillStyle = '#fff'; c.fillRect(x, y, w, h);
+  c.fillStyle = '#1F7A6D'; c.fillRect(x, y, w, 92);
+  txt(c, 'Encaminhar para...', x + 24, y + 64, 19, '#fff', { a: 'left' });
+  const list = [['lucia', 'Mãe'], ['ze', 'Vovô Zé'], ['carlos', 'Seu Carlos'], ['neide', 'Tia Neide']];
+  list.forEach(([who, nm], i) => {
+    const yy = y + 130 + i * 70;
+    avatar(c, who, x + 44, yy, 24, { t });
+    txt(c, nm, x + 82, yy, 17, '#1b1b1b', { a: 'left', w: 700 });
+    const on = t > t0 + 0.2 + i * 0.25 && who !== 'neide';
+    c.beginPath(); c.arc(x + w - 40, yy, 13, 0, TAU); c.fillStyle = on ? '#1F7A6D' : '#fff'; c.fill(); c.strokeStyle = '#1F7A6D'; c.lineWidth = 2; c.stroke();
+    if (on) line(c, [[x + w - 46, yy], [x + w - 41, yy + 5], [x + w - 33, yy - 5]], '#fff', 2.6);
+  });
+  const k = pr(t, t0 + 1.2, t0 + 1.25);
+  const bx = x + w - 50, by = y + h - 60;
+  circ(c, bx, by, 28 * (1 - k * 0.1), '#1F7A6D');
+  // avião de papel voando
+  const fk = pr(t, t0 + 1.25, t0 + 1.9);
+  const px = bx + fk * 200, py = by - fk * 420;
+  c.save(); c.translate(px, py); c.rotate(-0.6 * fk);
+  c.beginPath(); c.moveTo(-12, -9); c.lineTo(14, 0); c.lineTo(-12, 9); c.lineTo(-7, 0); c.closePath(); c.fillStyle = '#fff'; c.fill(); c.restore();
+}
+
+function searchScreen(c, x, y, w, h, t, o) {
+  c.fillStyle = '#F7F9FC'; c.fillRect(x, y, w, h);
+  c.fillStyle = '#fff'; c.fillRect(x, y, w, 150);
+  magnifier(c, x + 40, y + 70, 0.5, '#1F6A9C');
+  txt(c, 'Pesquisa', x + 62, y + 70, 22, '#1F6A9C', { a: 'left' });
+  fillRR(c, x + 16, y + 98, w - 32, 40, 20, '#EEF2F7');
+  const q = 'apagão nacional Brasil';
+  const n = Math.floor(clamp((t - o.t0) / 2.4) * q.length);
+  txt(c, q.slice(0, n) + (t < o.t0 + 2.8 && (t * 2) % 1 < 0.5 ? '|' : ''), x + 32, y + 118, 15, '#222', { a: 'left', w: 600 });
+  magnifier(c, x + w - 38, y + 118, 0.28, '#888');
+  const res = [
+    ['building', 'Site oficial do setor de energia', 'Nenhum aviso sobre apagão nacional.'],
+    ['news', 'Portal de notícias', 'Nenhuma reportagem sobre apagão nacional.'],
+    ['news2', 'Outro portal de notícias', 'Nada encontrado sobre o assunto.'],
+    ['check', 'Agência de checagem', 'A mensagem circula sem nenhuma fonte.'],
+  ];
+  if (t > o.t0 + 2.9) txt(c, 'Resultados para "apagão nacional"', x + 20, y + 172, 13, '#666', { a: 'left', w: 700 });
+  res.forEach((r, i) => {
+    const at = o.r[i]; if (t < at) return;
+    const k = eo(pr(t, at, at + 0.35)); const yy = y + 192 + i * 98 + (1 - k) * 20;
+    c.globalAlpha = k;
+    shadowed(c, 8, 'rgba(0,0,0,.1)', 2, () => fillRR(c, x + 14, yy, w - 28, 86, 12, '#fff'));
+    circ(c, x + 46, yy + 43, 22, '#EAF2FA'); drawIcon(c, r[0], x + 46, yy + 43, 0.42);
+    txt(c, r[1], x + 78, yy + 26, 14, '#1F6A9C', { a: 'left', w: 800 });
+    const ls = wrap(c, r[2], w - 120, 13, 600); ls.forEach((l, j) => txt(c, l, x + 78, yy + 48 + j * 16, 13, '#333', { a: 'left', w: 600 }));
+    c.globalAlpha = 1;
+  });
+}
+
+// ---------- ícones ----------
+function heart(c, x, y, r, col) {
+  c.beginPath(); c.moveTo(x, y + r * 0.9);
+  c.bezierCurveTo(x - r * 1.8, y - r * 0.2, x - r * 0.9, y - r * 1.6, x, y - r * 0.5);
+  c.bezierCurveTo(x + r * 0.9, y - r * 1.6, x + r * 1.8, y - r * 0.2, x, y + r * 0.9); c.fillStyle = col; c.fill();
+}
+function thumbIcon(c, x, y, s, col = '#F4A261') {
+  c.save(); c.translate(x, y); c.scale(s, s);
+  fillRR(c, -12, -4, 8, 18, 2, '#457B9D'); fillRR(c, -4, -4, 16, 18, 5, col); fillRR(c, -2, -18, 8, 16, 4, col); c.restore();
+}
+function magnifier(c, x, y, s, col = '#14213D') {
+  c.save(); c.translate(x, y); c.scale(s, s);
+  c.beginPath(); c.arc(-6, -6, 22, 0, TAU); c.strokeStyle = col; c.lineWidth = 8; c.stroke(); line(c, [[10, 10], [28, 28]], col, 10); c.restore();
+}
+function drawIcon(c, name, x, y, s = 1) {
+  c.save(); c.translate(x, y); c.scale(s, s);
+  switch (name) {
+    case 'building':
+      c.fillStyle = '#1F6A9C'; c.beginPath(); c.moveTo(-40, -18); c.lineTo(0, -42); c.lineTo(40, -18); c.closePath(); c.fill();
+      c.fillRect(-36, 28, 72, 10); for (let i = -3; i <= 3; i += 2) c.fillRect(i * 9 - 4, -12, 9, 38); break;
+    case 'news': case 'news2':
+      fillRR(c, -36, -30, 72, 60, 6, name === 'news' ? '#E63946' : '#F77F00'); c.fillStyle = '#fff'; c.fillRect(-28, -22, 56, 12);
+      for (let i = 0; i < 3; i++) c.fillRect(-28, -2 + i * 10, i === 2 ? 30 : 56, 5); break;
+    case 'check': circ(c, 0, 0, 36, '#2A9D8F'); line(c, [[-16, 0], [-4, 13], [18, -14]], '#fff', 9); break;
+    case 'x': circ(c, 0, 0, 36, '#E63946'); line(c, [[-14, -14], [14, 14]], '#fff', 9); line(c, [[14, -14], [-14, 14]], '#fff', 9); break;
+    case 'calendar':
+      fillRR(c, -40, -36, 80, 76, 10, '#fff'); c.strokeStyle = '#14213D'; c.lineWidth = 4; rr(c, -40, -36, 80, 76, 10); c.stroke();
+      c.fillStyle = '#E63946'; c.fillRect(-38, -34, 76, 20); line(c, [[-20, -44], [-20, -28]], '#14213D', 6); line(c, [[20, -44], [20, -28]], '#14213D', 6);
+      txt(c, '2019', 0, 12, 26, '#14213D'); break;
+    case 'phone':
+      fillRR(c, -24, -40, 48, 80, 10, '#1d1f2b'); fillRR(c, -19, -33, 38, 64, 4, '#9EE7FF'); break;
+    case 'alert':
+      fillRR(c, -26, -42, 52, 84, 10, '#1d1f2b'); fillRR(c, -21, -35, 42, 68, 4, '#fff');
+      fillRR(c, -18, -26, 36, 14, 3, '#E63946'); txt(c, '!!!', 0, -19, 11, '#fff');
+      c.fillStyle = '#ccc'; c.fillRect(-16, -6, 32, 5); c.fillRect(-16, 4, 26, 5); c.fillRect(-16, 14, 30, 5); break;
+    case 'share':
+      circ(c, -20, 0, 9, '#14213D'); circ(c, 20, -20, 9, '#14213D'); circ(c, 20, 20, 9, '#14213D');
+      line(c, [[-20, 0], [20, -20]], '#14213D', 5); line(c, [[-20, 0], [20, 20]], '#14213D', 5); break;
+    case 'question': circ(c, 0, 0, 36, '#FFC93C'); txt(c, '?', 0, 4, 52, '#14213D'); break;
+    case 'fear': circ(c, 0, 0, 36, '#BDE0FE'); ell(c, -12, -6, 6, 9, '#fff'); ell(c, 12, -6, 6, 9, '#fff'); circ(c, -12, -5, 3, '#14213D'); circ(c, 12, -5, 3, '#14213D'); ell(c, 0, 16, 7, 9, '#5B1F1F'); line(c, [[-20, -20], [-6, -16]], '#14213D', 3); line(c, [[20, -20], [6, -16]], '#14213D', 3); break;
+    case 'worry': circ(c, 0, 0, 36, '#FFD6A5'); circ(c, -12, -4, 4, '#14213D'); circ(c, 12, -4, 4, '#14213D'); c.beginPath(); c.moveTo(-12, 18); c.quadraticCurveTo(0, 8, 12, 18); c.strokeStyle = '#5B1F1F'; c.lineWidth = 4; c.stroke(); line(c, [[-20, -14], [-6, -20]], '#14213D', 3); line(c, [[20, -14], [6, -20]], '#14213D', 3); break;
+    case 'curious': circ(c, 0, 0, 36, '#CDB4DB'); circ(c, -12, -4, 4, '#14213D'); circ(c, 12, -4, 7, '#fff'); circ(c, 12, -4, 4, '#14213D'); line(c, [[-8, 16], [8, 14]], '#5B1F1F', 4); txt(c, '?', 26, -26, 26, '#14213D'); break;
+    case 'cart': cart(c, 0, 40, 0.6, 1, 0); break;
+    case 'people': [['rafa', -36], ['lucia', -12], ['ze', 12], ['neide', 36]].forEach(([w, xx]) => avatar(c, w, xx, 0, 20, { t: 0 })); break;
+    case 'rewind': c.fillStyle = '#fff'; for (const o of [0, 26]) { c.beginPath(); c.moveTo(4 - o, -22); c.lineTo(-22 - o, 0); c.lineTo(4 - o, 22); c.closePath(); c.fill(); } break;
+    case 'megaphone': c.fillStyle = '#E63946'; c.beginPath(); c.moveTo(-26, -10); c.lineTo(20, -30); c.lineTo(20, 30); c.lineTo(-26, 10); c.closePath(); c.fill(); fillRR(c, -36, -12, 14, 24, 4, '#14213D'); fillRR(c, -24, 10, 10, 22, 3, '#14213D'); break;
+  }
+  c.restore();
+}
+
+// ---------- legendas ----------
+const chunkCache = {};
+function chunks(l) {
+  if (chunkCache[l.id]) return chunkCache[l.id];
+  const out = []; let cur = [];
+  l.words.forEach((w, i) => {
+    cur.push(w);
+    const end = /[.!?…:]$/.test(w[0]), comma = /,$/.test(w[0]);
+    if (cur.length >= 8 || (end && cur.length >= 3) || (comma && cur.length >= 5) || i === l.words.length - 1) { out.push(cur); cur = []; }
+  });
+  if (cur.length) out.push(cur);
+  return (chunkCache[l.id] = out);
+}
+const SUBNAME = { msg: 'Mensagem de Tia Neide' };
+function subtitles(c, t) {
+  let l = null; for (const x of LINES) if (t >= x.s - 0.05 && t < x.e + 0.35) { l = x; break; }
+  if (!l) return;
+  const ch = chunks(l); let k = 0;
+  for (let i = 0; i < ch.length; i++) if (t >= ch[i][0][1] - 0.05) k = i;
+  const words = ch[k];
+  const size = 25; c.font = `800 ${size}px ${FD}`;
+  // quebra em linhas
+  const rows = []; let row = [], rw = 0; const sp = c.measureText(' ').width;
+  for (const w of words) { const ww = c.measureText(w[0]).width; if (rw + ww > 470 && row.length) { rows.push([row, rw - sp]); row = []; rw = 0; } row.push([w, ww]); rw += ww + sp; }
+  if (row.length) rows.push([row, rw - sp]);
+  const lh = 31, baseY = 872 - (rows.length - 1) * lh;
+  const a = pr(t, l.s - 0.05, l.s + 0.1) * (1 - pr(t, l.e + 0.15, l.e + 0.35));
+  c.save(); c.globalAlpha = a;
+  const g = c.createLinearGradient(0, 760, 0, 960); g.addColorStop(0, 'rgba(10,14,30,0)'); g.addColorStop(1, 'rgba(10,14,30,.7)'); c.fillStyle = g; c.fillRect(0, 760, W, 200);
+  // nome
+  const nm = SUBNAME[l.id] || l.name; c.font = `800 15px ${FD}`; const nw = c.measureText(nm).width + 26;
+  fillRR(c, W / 2 - nw / 2, baseY - 46, nw, 26, 13, COL[l.who]);
+  txt(c, nm, W / 2, baseY - 32, 15, '#fff');
+  rows.forEach(([r, w], ri) => {
+    let xx = W / 2 - w / 2; const yy = baseY + ri * lh;
+    for (const [wd, ww] of r) {
+      const said = t >= wd[1] - 0.02;
+      c.font = `800 ${size}px ${FD}`; c.textAlign = 'left'; c.textBaseline = 'middle';
+      c.lineWidth = 6; c.strokeStyle = 'rgba(10,14,30,.9)'; c.lineJoin = 'round'; c.strokeText(wd[0], xx, yy);
+      c.fillStyle = said ? (l.who === 'veri' ? '#FFE08A' : '#fff') : 'rgba(255,255,255,.5)'; c.fillText(wd[0], xx, yy);
+      xx += ww + sp;
+    }
+  });
+  c.restore();
+}
+
+// ---------- cartões de cena, transições, congelamento ----------
+const SCENES = [['s1', 1, 'Uma mensagem inesperada'], ['s2', 2, 'O desespero se espalha'], ['s3', 3, 'Primeira interrupção do narrador'], ['s4', 4, 'A notícia começa a ser questionada'], ['s5', 5, 'Segunda interrupção do narrador'], ['s6', 6, 'A verdade chega ao grupo'], ['s7', 7, 'Encerramento']];
+function sceneCard(c, t) {
+  for (const [m, n, title] of SCENES) {
+    const t0 = M[m] + (m === 's3' || m === 's5' ? 0.5 : 0.25), t1 = t0 + 3.2;
+    if (t < t0 || t > t1) continue;
+    const k = eo(pr(t, t0, t0 + 0.45)), ko = eio(pr(t, t1 - 0.4, t1));
+    const y = 40 + (1 - k) * -90 + ko * -90;
+    c.save(); c.font = `800 20px ${FD}`; const tw = Math.max(c.measureText(title).width, 80) + 40;
+    shadowed(c, 12, 'rgba(0,0,0,.3)', 4, () => fillRR(c, W / 2 - tw / 2, y, tw, 64, 16, COL.navy));
+    fillRR(c, W / 2 - 40, y - 12, 80, 24, 12, COL.yellow);
+    txt(c, 'CENA ' + n, W / 2, y, 14, COL.navy);
+    txt(c, title, W / 2, y + 36, 20, '#fff');
+    c.restore();
+  }
+}
+function locChip(c, t, t0, t1, label) {
+  if (t < t0 || t > t1) return;
+  const a = pr(t, t0, t0 + 0.4) * (1 - pr(t, t1 - 0.4, t1));
+  c.save(); c.globalAlpha = a; c.font = `700 14px ${FD}`; const w = c.measureText(label).width + 34;
+  fillRR(c, 16, 120, w, 30, 15, 'rgba(255,255,255,.92)'); circ(c, 32, 135, 5, COL.red); txt(c, label, 44, 136, 14, COL.navy, { a: 'left', w: 700 });
+  c.restore();
+}
+const WIPES = ['s1', 's1_mom', 's1_spread', 's2', 's4', 's6', 's6_rafa', 's6_lucia', 's6_ze', 's6_neide', 's6_all', 's7', 'final', 'credits'];
+function wipes(c, t) {
+  for (const m of WIPES) {
+    const tm = M[m]; if (t < tm - 0.32 || t > tm + 0.32) continue;
+    const k = pr(t, tm - 0.32, tm + 0.32); const x = lerp(-W * 1.4, W * 1.4, eio(k));
+    c.save(); c.translate(x, 0);
+    c.fillStyle = COL.yellow; c.beginPath(); c.moveTo(-W * 0.5 - 60, 0); c.lineTo(W * 1.2 - 60, 0); c.lineTo(W * 0.9 - 60, H); c.lineTo(-W * 0.8 - 60, H); c.closePath(); c.fill();
+    c.fillStyle = COL.navy; c.beginPath(); c.moveTo(-W * 0.5, 0); c.lineTo(W * 1.2, 0); c.lineTo(W * 0.9, H); c.lineTo(-W * 0.8, H); c.closePath(); c.fill();
+    c.restore();
+  }
+}
+function freezeFX(c, t, f0, f1) {
+  if (t < f0 || t >= f1) return;
+  const k = pr(t, f0, f0 + 0.25) * (1 - pr(t, f1 - 0.25, f1));
+  c.save();
+  c.globalAlpha = 0.85 * k; c.globalCompositeOperation = 'saturation'; c.fillStyle = 'hsl(0,0%,50%)'; c.fillRect(0, 0, W, H);
+  c.globalCompositeOperation = 'source-over'; c.globalAlpha = 0.32 * k; c.fillStyle = '#1E3163'; c.fillRect(0, 0, W, H);
+  c.globalAlpha = 0.08 * k; c.fillStyle = '#fff'; for (let y = (t * 40) % 6; y < H; y += 6) c.fillRect(0, y, W, 2);
+  c.globalAlpha = k;
+  // cantos de visor
+  const m = 22, L = 46; c.strokeStyle = '#fff'; c.lineWidth = 5; c.lineCap = 'round';
+  for (const [x, y, sx, sy] of [[m, m, 1, 1], [W - m, m, -1, 1], [m, H - m, 1, -1], [W - m, H - m, -1, -1]]) { c.beginPath(); c.moveTo(x, y + sy * L); c.lineTo(x, y); c.lineTo(x + sx * L, y); c.stroke(); }
+  // selo PAUSADO
+  const blink = (t * 1.2) % 1 < 0.7;
+  fillRR(c, W - 170, 112, 134, 38, 19, 'rgba(230,57,70,.95)');
+  if (blink) { c.fillStyle = '#fff'; c.fillRect(W - 152, 123, 6, 16); c.fillRect(W - 141, 123, 6, 16); }
+  txt(c, 'PAUSADO', W - 88, 132, 16, '#fff');
+  c.restore();
+  // flash
+  const fl = 1 - pr(t, f0, f0 + 0.35); if (fl > 0) { c.save(); c.globalAlpha = fl * 0.85; c.fillStyle = '#fff'; c.fillRect(0, 0, W, H); c.restore(); }
+}
+// cartão branco para explicações do Veri
+function card(c, x, y, w, h, k, rot = 0, col = '#fff') {
+  c.save(); c.translate(x + w / 2, y + h / 2); c.rotate(rot); const s = lerp(0.6, 1, eob(k)); c.scale(s, s); c.globalAlpha = clamp(k * 1.5);
+  shadowed(c, 24, 'rgba(0,0,0,.35)', 10, () => fillRR(c, -w / 2, -h / 2, w, h, 22, col));
+  c.translate(-w / 2, -h / 2);
+}
+function pop(t, at, d = 0.4) { return eob(pr(t, at, at + d)); }
+function pill(c, x, y, label, bg, fg = '#fff', size = 18) {
+  c.font = `800 ${size}px ${FD}`; const w = c.measureText(label).width + size * 1.4;
+  fillRR(c, x - w / 2, y - size * 0.95, w, size * 1.9, size * 0.95, bg); txt(c, label, x, y + 1, size, fg);
+}
+
+// ===================== cenas =====================
+const L_ = id => LBY[id];
+
+// ---------- ABERTURA ----------
+function opening(c, t) {
+  gradBG(c, '#0B1430', '#1E3163');
+  // estrelas
+  for (let i = 0; i < 40; i++) { c.globalAlpha = 0.3 + 0.5 * Math.abs(Math.sin(t * 1.3 + i)); circ(c, hash(i) * W, hash(i + 50) * 420, 1.4, '#fff'); }
+  c.globalAlpha = 1;
+  // cidade apagando
+  for (let i = 0; i < 12; i++) {
+    const bw = 40 + hash(i + 3) * 30, bh = 160 + hash(i + 9) * 260, bx = i * 46 - 10, by = 960 - bh;
+    c.fillStyle = i % 2 ? '#16224A' : '#1B2A57'; c.fillRect(bx, by, bw, bh);
+    for (let wy = by + 14; wy < 940; wy += 22) for (let wx = bx + 8; wx < bx + bw - 10; wx += 14) {
+      const off = 0.5 + hash(wx * 0.13 + wy * 0.7) * 1.6;
+      const lit = t < off || (t > off && Math.sin(t * 40 + wx) > 0.92 && t < off + 0.3);
+      c.fillStyle = lit ? '#FFE08A' : 'rgba(255,255,255,.06)'; c.fillRect(wx, wy, 7, 10);
+    }
+  }
+  // lâmpada balançando
+  const sw = Math.sin(t * 1.6) * 0.25;
+  c.save(); c.translate(270, 0); c.rotate(sw); line(c, [[0, 0], [0, 150]], '#555', 3);
+  fillRR(c, -14, 150, 28, 24, 4, '#9aa');
+  const on = t < 0.7 || (t > 1.0 && t < 1.15);
+  if (on) { const g = c.createRadialGradient(0, 200, 5, 0, 200, 120); g.addColorStop(0, 'rgba(255,224,138,.6)'); g.addColorStop(1, 'rgba(255,224,138,0)'); c.fillStyle = g; c.fillRect(-120, 80, 240, 240); }
+  circ(c, 0, 200, 32, on ? '#FFE08A' : 'rgba(220,230,255,.25)');
+  c.restore();
+  // título
+  const k1 = pop(t, 0.9, 0.5), k2 = pop(t, 1.15, 0.5), k3 = pop(t, 1.4, 0.5);
+  c.save(); c.translate(270, 330); c.scale(k1, k1); txt(c, 'O APAGÃO', 0, 0, 72, '#fff', { stroke: '#0B1430', sw: 10 }); c.restore();
+  c.save(); c.translate(270, 405); c.scale(k2, k2); txt(c, 'QUE PAROU', 0, 0, 62, COL.yellow, { stroke: '#0B1430', sw: 10 }); c.restore();
+  c.save(); c.translate(270, 476); c.scale(k3, k3); txt(c, 'O BRASIL', 0, 0, 72, '#fff', { stroke: '#0B1430', sw: 10 }); c.restore();
+  c.globalAlpha = pr(t, 1.8, 2.4); txt(c, 'Um curta sobre fake news na família', 270, 534, 20, '#BFD7FF', { w: 700 }); c.globalAlpha = 1;
+  // Veri
+  if (t > 2.1) {
+    const k = eob(pr(t, 2.1, 2.6));
+    veri(c, { x: 270, y: 800 + (1 - k) * 300, s: 0.9, t, talk: talkOf('veri', t), arms: t < L_('v0').s + 2.5 ? 'wave' : 'present', gest: speaking('veri', t) });
+  }
+}
+
+// ---------- CENA 1 ----------
+function rafaOnSofa(c, t, o = {}) {
+  person(c, 'rafa', Object.assign({ x: 270, y: 690, sit: true, t, pose: 'phone', glow: true, talk: talkOf('rafa', t) }, o));
+}
+function scene1(c, t) {
+  const notify = M.s1_notify, zoom = M.s1_zoom, react = M.s1_react;
+  if (t < zoom + 0.55) {
+    // sala + Rafa
+    const cam = camKF(t, [[M.s1, 270, 480, 1.0], [notify, 270, 520, 1.25], [zoom, 280, 520, 1.6], [zoom + 0.55, 285, 480, 4.2]]);
+    c.save(); applyCam(c, cam, t > notify && t < notify + 0.6 ? 2 : 0, t);
+    livingRoom(c, t);
+    const surprised = t > notify;
+    rafaOnSofa(c, t, { mood: surprised ? 'surprised' : 'happy', lookY: 1, look: 0, tilt: surprised ? 0 : 0.05 });
+    if (surprised) {
+      // vibração do celular
+      const k = pr(t, notify, notify + 0.15) * (1 - pr(t, notify + 1.4, notify + 1.6));
+      c.globalAlpha = k; for (let i = 0; i < 3; i++) { const r = 18 + ((t * 40 + i * 8) % 24); c.beginPath(); c.arc(270, 540, r, -0.6, 0.6); c.strokeStyle = COL.red; c.lineWidth = 3; c.stroke(); c.beginPath(); c.arc(270, 540, r, Math.PI - 0.6, Math.PI + 0.6); c.stroke(); }
+      const bk = pop(t, notify + 0.1); c.save(); c.translate(318, 360); c.scale(bk, bk); circ(c, 0, 0, 20, COL.red); txt(c, '!', 0, 2, 28, '#fff'); c.restore();
+      c.globalAlpha = 1;
+    }
+    c.restore();
+    locChip(c, t, M.s1 + 3.6, notify, 'Sábado, 16h · Casa da família');
+    if (t > zoom + 0.25) { c.globalAlpha = pr(t, zoom + 0.25, zoom + 0.55); c.fillStyle = '#0B1430'; c.fillRect(0, 0, W, H); c.globalAlpha = 1; }
+    if (t < zoom + 0.25) return;
+  }
+  if (t < react) {
+    // tela do celular com a mensagem
+    gradBG(c, '#0B1430', '#14213D'); dots(c, t);
+    const k = eo(pr(t, zoom + 0.3, zoom + 0.8));
+    c.save(); c.translate(270, 470); c.scale(lerp(0.7, 1, k), lerp(0.7, 1, k)); c.translate(-270, -470); c.globalAlpha = k;
+    phoneFrame(c, 270, 470, 360, 720, (x, y, w, h) => chatScreen(c, x, y, w, h, [
+      { from: 'lucia', text: 'Alguém vem almoçar amanhã?', at: 0, time: '15:10' },
+      { from: 'ze', text: 'Eu vou! Levo a sobremesa.', at: 0, time: '15:12' },
+      { from: 'neide', text: URG, fwd: true, at: M.s1_msg, time: '16:02' },
+    ], t));
+    c.restore();
+    // brilho de alerta
+    if (t > M.s1_msg) { const a = 0.25 + 0.2 * Math.sin(t * 8); c.globalAlpha = a * pr(t, M.s1_msg, M.s1_msg + 0.5); c.strokeStyle = COL.red; c.lineWidth = 10; c.strokeRect(5, 5, W - 10, H - 10); c.globalAlpha = 1; }
+    return;
+  }
+  if (t < M.s1_fwd) {
+    // close no Rafa assustado
+    const l = L_('rafa1');
+    const cam = camKF(t, [[react, 270, 440, 1.7], [wt('rafa1', 'inteiro'), 272, 400, 2.15], [wt('rafa1', 'Preciso'), 272, 400, 2.15], [l.e, 270, 430, 1.8]]);
+    c.save(); applyCam(c, cam, 0, t); livingRoom(c, t);
+    rafaOnSofa(c, t, { mood: t > wt('rafa1', 'Preciso') ? 'worried' : 'scared', look: t > wt('rafa1', 'Preciso') ? 0 : 0, lookY: t < wt('rafa1', 'Brasil') ? 1 : 0 });
+    c.restore();
+    const ik = 1 - pr(t, react, react + 0.4); if (ik > 0) { c.globalAlpha = ik; c.fillStyle = '#0B1430'; c.fillRect(0, 0, W, H); c.globalAlpha = 1; }
+    return;
+  }
+  if (t < M.s1_mom) {
+    gradBG(c, '#0B1430', '#14213D'); dots(c, t);
+    const k = eo(pr(t, M.s1_fwd, M.s1_fwd + 0.35));
+    c.save(); c.globalAlpha = k; phoneFrame(c, 270, 470, 360, 720, (x, y, w, h) => forwardScreen(c, x, y, w, h, t, M.s1_fwd)); c.restore();
+    return;
+  }
+  if (t < M.s1_spread) {
+    // cozinha: Mãe Lúcia
+    const l = L_('lucia1'); const meu = wt('lucia1', 'Vou');
+    const cam = camKF(t, [[M.s1_mom, 260, 470, 1.25], [l.s, 250, 430, 1.55], [l.e, 255, 440, 1.6]]);
+    c.save(); applyCam(c, cam, 0, t); kitchen(c, t);
+    const before = t < l.s - 0.3;
+    person(c, 'lucia', { x: 245, y: 720, t, talk: talkOf('lucia', t), mood: before ? (t < M.s1_mom + 0.5 ? 'happy' : 'surprised') : (t < meu ? 'scared' : 'worried'), pose: before ? (t < M.s1_mom + 0.6 ? 'down' : 'phone') : (t < meu ? 'cheeks' : 'phone'), lookY: before ? 1 : 0, gest: false });
+    kitchenCounter(c, t);
+    if (t < M.s1_mom + 0.9) { const k = Math.sin(t * 60) * 2; phoneProp(c, 330 + k, 545, Math.PI / 2, true, 1); }
+    c.restore();
+    locChip(c, t, M.s1_mom + 0.3, l.e, 'Cozinha da Mãe Lúcia');
+    return;
+  }
+  // montagem: a mensagem se espalha
+  spreadMontage(c, t, M.s1_spread, M.s2);
+}
+
+function spreadMontage(c, t, t0, t1) {
+  gradBG(c, '#0B1430', '#1E3163'); dots(c, t);
+  const cx = 270, cy = 470;
+  const fam = [['lucia', -150, -170], ['ze', 150, -170], ['neide', -170, 130], ['carlos', 170, 130]];
+  // nós genéricos
+  for (let i = 0; i < 46; i++) {
+    const at = t0 + 1.0 + i * 0.09; if (t < at) continue;
+    const parent = fam[i % 4]; const a = hash(i) * TAU, r = 70 + hash(i + 7) * 80;
+    const px = cx + parent[1], py = cy + parent[2], nx = px + Math.cos(a) * r, ny = py + Math.sin(a) * r;
+    const k = pr(t, at, at + 0.3);
+    line(c, [[px, py], [lerp(px, nx, k), lerp(py, ny, k)]], 'rgba(255,201,60,.35)', 2);
+    if (k > 0.9) { circ(c, nx, ny, 9, '#5C6B99'); circ(c, nx, ny - 3, 3.5, '#C5CEE8'); ell(c, nx, ny + 5, 5, 3, '#C5CEE8'); }
+  }
+  fam.forEach(([who, dx, dy], i) => {
+    const at = t0 + 0.2 + i * 0.25; if (t < at) return;
+    const k = pr(t, at, at + 0.35);
+    line(c, [[cx, cy], [lerp(cx, cx + dx, k), lerp(cy, cy + dy, k)]], COL.yellow, 4);
+    // envelope viajando
+    const m = ((t - at) * 0.9) % 1; c.save(); c.translate(lerp(cx, cx + dx, m), lerp(cy, cy + dy, m)); fillRR(c, -10, -7, 20, 14, 2, '#fff'); line(c, [[-10, -7], [0, 1], [10, -7]], '#E63946', 2); c.restore();
+    const kk = pop(t, at + 0.2);
+    c.save(); c.translate(cx + dx, cy + dy); c.scale(kk, kk); avatar(c, who, 0, 0, 40, { t, mood: who === 'carlos' ? 'neutral' : 'worried', ring: COL.yellow });
+    pill(c, 0, 58, CH_NAMES[who], 'rgba(255,255,255,.95)', COL.navy, 13); c.restore();
+  });
+  // celular central (Rafa)
+  const pk = 1 + Math.sin(t * 6) * 0.04;
+  c.save(); c.translate(cx, cy); c.scale(pk, pk); circ(c, 0, 0, 52, COL.red); avatar(c, 'rafa', 0, 0, 44, { t, mood: 'worried', ring: '#fff' }); c.restore();
+  // contador
+  const n = Math.floor(Math.pow(clamp((t - t0 - 0.4) / (t1 - t0 - 1.2)), 2.2) * 1283) + 1;
+  fillRR(c, 120, 128, 300, 92, 20, 'rgba(255,255,255,.1)');
+  txt(c, 'MENSAGEM ENCAMINHADA', 270, 152, 16, '#BFD7FF', { w: 800 });
+  txt(c, n.toLocaleString('pt-BR') + (n > 1 ? ' vezes' : ' vez'), 270, 192, 38, COL.yellow);
+}
+
+// ---------- CENA 2 + 3 (mercado, congelamento) ----------
+const NPCS = [
+  { p: 'npc0', y: 712, sp: 95, x0: 0, cart: true }, { p: 'npc1', y: 726, sp: -80, x0: 500 }, { p: 'npc2', y: 742, sp: 120, x0: 300, cart: true },
+  { p: 'npc3', y: 700, sp: -110, x0: 200 }, { p: 'npc4', y: 756, sp: 70, x0: 750, cart: true }, { p: 'npc5', y: 706, sp: 130, x0: 900 },
+];
+function marketTime(t) { return t < M.freeze1 ? t : t < M.unfreeze1 ? M.freeze1 : M.freeze1 + (t - M.unfreeze1); }
+function scene2(c, t) {
+  const te = marketTime(t);
+  const z1 = L_('ze1'), n1 = L_('neide1');
+  const chaos = te > M.s2_chaos ? 1.8 : 0;
+  const after = M.freeze1 + 0.01;
+  const cam = camKF(te, [[M.s2, 110, 560, 1.08], [M.s2 + 4, 200, 560, 1.0], [z1.s, 160, 610, 1.4], [z1.e, 160, 610, 1.4], [n1.s, 410, 610, 1.4], [n1.e + 0.2, 330, 560, 1.06], [M.freeze1, 300, 540, 1.12], [after + 4, 400, 560, 1.0]]);
+  c.save(); applyCam(c, cam, t < M.freeze1 ? chaos : 0, te);
+  market(c, te);
+  // figurantes (atrás)
+  const speedUp = te > M.s2_chaos ? 1.6 : 1;
+  const drawNPC = (n, i) => {
+    const span = 1300; let x = ((n.x0 + n.sp * speedUp * (te - M.s2)) % span + span) % span - 380;
+    const flip = n.sp < 0;
+    person(c, n.p, { x, y: n.y, s: 0.72, t: te + i, walk: 1, mood: i % 2 ? 'worried' : 'scared', pose: n.cart ? 'cart' : (i % 2 ? 'phone' : 'down'), flip, gest: false, noSweat: false });
+    if (n.cart) cart(c, x + (flip ? -92 : 92), n.y + 4, 0.75, 0.6 + 0.4 * hash(i), te, flip);
+  };
+  NPCS.forEach(drawNPC);
+  // Mãe Lúcia ao fundo pegando água
+  const lucReach = te < M.s2_empty + 1;
+  person(c, 'lucia', { x: 205, y: 690, s: 0.8, t: te, pose: lucReach ? 'reach' : 'box', mood: 'worried', gest: false });
+  if (!lucReach) waterPack(c, 205, 560, 0.75);
+  // Vovô Zé com carrinho
+  const zx = te < M.s2 + 3.6 ? lerp(-60, 120, eo(pr(te, M.s2, M.s2 + 3.6))) : te > after ? 120 + (te - after) * 110 : 120;
+  const zwalk = (te < M.s2 + 3.6 || te > after) ? 1 : 0;
+  const fill = 0.15 + 0.85 * pr(te, M.s2, M.freeze1);
+  person(c, 'ze', { x: zx, y: 850, s: 1.05, t: te, walk: zwalk, pose: 'cart', mood: te > M.s2_chaos ? 'worried' : 'determined', talk: talkOf('ze', te), look: 1, gest: false });
+  cart(c, zx + 142, 856, 1.2, fill, te * (zwalk ? 1 : 0), false);
+  // Tia Neide digitando
+  const nx = te > after + 1 ? 440 + (te - after - 1) * 120 : 440;
+  person(c, 'neide', { x: nx, y: 845, s: 1.05, t: te, pose: te > n1.e || te < n1.s - 0.3 ? 'type' : 'phone', mood: te < n1.s ? 'surprised' : 'neutral', talk: talkOf('neide', te), walk: te > after + 1 ? 1 : 0, look: -1, gest: false });
+  if (te > M.s2 + 2) {
+    // notificações saindo do celular da Neide
+    for (let i = 0; i < 5; i++) {
+      const ph = ((te - M.s2) * (te > M.s2_chaos ? 1.2 : 0.7) + i / 5) % 1;
+      c.globalAlpha = Math.sin(ph * Math.PI); fillRR(c, nx + 10 + i * 6, 640 - ph * 120, 34, 20, 8, '#25A244'); txt(c, '+1', nx + 27 + i * 6, 651 - ph * 120, 12, '#fff'); c.globalAlpha = 1;
+    }
+  }
+  c.restore();
+  if (te < M.s2 + 4.5) locChip(c, te, M.s2 + 3.4, M.s2 + 7.5, 'Supermercado do bairro');
+  // ---- congelamento (cena 3)
+  freezeFX(c, t, M.freeze1, M.unfreeze1);
+  if (t >= M.freeze1 && t < M.unfreeze1) scene3Overlay(c, t);
+}
+
+function veriEnter(t, tin, tout) {
+  const k = eob(pr(t, tin, tin + 0.55)); const ko = eio(pr(t, tout, tout + 0.4));
+  return { dy: (1 - k) * 420, dx: ko * 620, rot: ko * 0.5, vis: t >= tin && t < tout + 0.45 };
+}
+function speedLines(c, x, y, k) {
+  if (k <= 0 || k >= 1) return;
+  c.save(); c.globalAlpha = 1 - k; c.strokeStyle = '#fff'; c.lineWidth = 5; c.lineCap = 'round';
+  for (let i = 0; i < 5; i++) { const yy = y - 260 + i * 50; c.beginPath(); c.moveTo(x - 160 - i * 10, yy); c.lineTo(x - 40, yy); c.stroke(); }
+  c.restore();
+}
+
+function scene3Overlay(c, t) {
+  const v1 = L_('v1'), v2 = L_('v2'), v3 = L_('v3'), v4 = L_('v4'), v5 = L_('v5');
+  const e = veriEnter(t, M.s3_in, M.s3_out);
+  // ---- painel
+  const panelOn = t > v1.s + 0.2 && t < v5.s + 0.2;
+  if (panelOn) {
+    const k = pr(t, v1.s + 0.2, v1.s + 0.6) * (1 - pr(t, v5.s - 0.2, v5.s + 0.2));
+    card(c, 30, 160, 480, 330, k, -0.015);
+    if (t < v2.s) {
+      // "vamos voltar" + 1 mensagem -> várias pessoas
+      const rw = wt('v1', 'voltar');
+      if (t > rw - 0.2 && t < rw + 1.8) { const kk = pop(t, rw - 0.2); c.save(); c.translate(240, 70); c.scale(kk, kk); fillRR(c, -70, -26, 140, 52, 26, COL.navy); c.translate(-14, 0); drawIcon(c, 'rewind', 0, 0, 0.6); c.restore(); txt(c, 'VOLTANDO...', 240, 112, 16, COL.navy); }
+      const a = wt('v1', 'simples');
+      if (t > a - 0.3) {
+        const k1 = pop(t, a - 0.3); c.save(); c.translate(90, 210); c.scale(k1, k1); drawIcon(c, 'phone', 0, 0, 0.9); circ(c, 18, -34, 13, COL.red); txt(c, '1', 18, -33, 16, '#fff'); c.restore();
+        txt(c, '1 mensagem', 90, 290, 18, COL.navy);
+        const k2 = pr(t, a + 0.4, a + 1.0);
+        line(c, [[140, 210], [lerp(140, 240, k2), 210]], COL.red, 6); if (k2 >= 1) { c.beginPath(); c.moveTo(252, 210); c.lineTo(236, 200); c.lineTo(236, 220); c.fillStyle = COL.red; c.fill(); }
+        const ppl = [['rafa', 300, 170], ['lucia', 370, 170], ['ze', 300, 245], ['neide', 370, 245], ['npc1', 440, 170], ['npc3', 440, 245]];
+        ppl.forEach(([w, x, y], i) => { const kk = pop(t, a + 1.0 + i * 0.12); if (kk <= 0) return; c.save(); c.translate(x, y); c.scale(kk, kk); if (CH[w] && w.startsWith('npc')) { circ(c, 0, 0, 30, '#9AA5C4'); c.save(); c.beginPath(); c.arc(0, 0, 30, 0, TAU); c.clip(); c.scale(0.6, 0.6); c.translate(0, 8); drawHead(c, CH[w], { t: 0, mood: 'scared' }); c.restore(); } else avatar(c, w, 0, 0, 30, { t: 0, mood: 'scared', ring: COL.red }); c.restore(); });
+        if (t > wt('v1', 'desespero') - 0.2) pill(c, 370, 300, 'DESESPERO!', COL.red, '#fff', 17);
+      }
+      txt(c, 'Uma simples mensagem...', 240, 40, 22, COL.navy);
+    } else if (t < v3.s) {
+      txt(c, 'Por que isso acontece?', 240, 42, 26, COL.navy);
+      const items = [['fear', 'MEDO', 'medo'], ['worry', 'PREOCUPAÇÃO', 'preocupa'], ['curious', 'CURIOSIDADE', 'curiosidade']];
+      items.forEach(([ic, lb, w], i) => { const at = wt('v2', w) - 0.15; const kk = pop(t, at); if (kk <= 0) return; c.save(); c.translate(90 + i * 150, 130); c.scale(kk, kk); drawIcon(c, ic, 0, 0, 1); txt(c, lb, 0, 56, 15, COL.navy); c.restore(); });
+      const u = wt('v2', 'urgente') - 0.15;
+      if (t > u) { const kk = pop(t, u); c.save(); c.translate(150, 262); c.rotate(-0.08); c.scale(kk, kk); fillRR(c, -90, -28, 180, 56, 10, COL.red); txt(c, 'URGENTE!!!', 0, 2, 28, '#fff'); c.restore(); }
+      const sp = wt('v2', 'compartilhando') - 0.15;
+      if (t > sp) { const kk = pop(t, sp); c.save(); c.translate(360, 262); c.scale(kk, kk); drawIcon(c, 'share', -60, 0, 0.8); txt(c, 'sem pensar', 20, 2, 22, COL.navy, { a: 'left' }); c.restore(); }
+    } else if (t < v4.s) {
+      txt(c, 'Veio de alguém conhecido...', 240, 42, 24, COL.navy);
+      const kk = pop(t, v3.s + 0.3); c.save(); c.translate(240, 175); c.scale(kk, kk);
+      heart(c, 0, 0, 62 + Math.sin(t * 5) * 3, '#FF8FA3');
+      [['lucia', -150, -30], ['ze', -110, 70], ['neide', 110, 70], ['carlos', 150, -30], ['rafa', 0, -90]].forEach(([w, x, y], i) => { const k2 = pop(t, v3.s + 0.5 + i * 0.2); if (k2 > 0) { c.save(); c.translate(x, y); c.scale(k2, k2); avatar(c, w, 0, 0, 30, { t: 0, mood: 'happy' }); c.restore(); } });
+      c.restore();
+      if (t > wt('v3', 'facilidade') - 0.2) pill(c, 240, 292, 'a gente confia mais rápido', COL.teal, '#fff', 18);
+    } else {
+      const kk = pop(t, v4.s + 0.1);
+      txt(c, 'Atenção!', 240, 50, 26, COL.red);
+      c.save(); c.translate(240, 170); c.scale(kk, kk);
+      pill(c, 0, -50, 'CONHECIDO', COL.teal, '#fff', 30);
+      const k2 = pop(t, wt('v4', 'não') - 0.1); c.save(); c.scale(k2, k2); txt(c, '≠', 0, 14, 70, COL.red); c.restore();
+      const k3 = pop(t, wt('v4', 'verdadeira') - 0.2); if (k3 > 0) { c.save(); c.translate(0, 82); c.scale(k3, k3); pill(c, 0, 0, 'VERDADEIRO', COL.navy, '#fff', 30); c.restore(); }
+      c.restore();
+    }
+    c.restore();
+  }
+  // ---- Veri
+  if (e.vis) {
+    const arms = t < v1.s + 1.2 ? 'stop' : t >= v5.s ? (t > wt('v5', 'soltar') - 0.3 ? 'point' : 'wave') : t >= v4.s ? 'pointUp' : 'present';
+    veri(c, { x: 150 + e.dx, y: 792 + e.dy, s: 0.86, t, talk: talkOf('veri', t), arms, mood: t >= v4.s && t < v5.s ? 'serious' : 'happy', gest: speaking('veri', t), rot: e.rot });
+    speedLines(c, 150 + e.dx, 792, pr(t, M.s3_out, M.s3_out + 0.45));
+  }
+}
+
+// ---------- CENA 4 + 5 (Seu Carlos, congelamento com lupa) ----------
+function carlosTime(t) { return t < M.freeze2 ? t : t < M.unfreeze2 ? M.freeze2 : M.freeze2 + (t - M.unfreeze2); }
+function scene4(c, t) {
+  const te = carlosTime(t);
+  const c1 = L_('carlos1'), c2 = L_('carlos2');
+  const notify = M.s4 + 4.4;
+  if (te < M.s4_search || te >= M.s4_think) {
+    const think = te >= M.s4_think, after = te > M.freeze2 + 0.01;
+    const cam = think ? camKF(te, [[M.s4_think, 270, 450, 1.7], [M.freeze2, 270, 430, 1.95], [M.freeze2 + 0.01, 270, 430, 1.95], [M.freeze2 + 3, 270, 450, 1.7]])
+      : camKF(te, [[M.s4, 270, 500, 1.0], [notify, 270, 490, 1.15], [c1.s, 270, 430, 1.8], [c1.e, 270, 420, 1.95]]);
+    c.save(); applyCam(c, cam, 0, te);
+    carlosRoom(c, te);
+    let mood = 'neutral', pose = 'phone', look = 0, lookY = 1;
+    if (!think) {
+      if (te > notify) { mood = 'surprised'; }
+      if (te > c1.s - 0.2) { mood = 'suspicious'; lookY = 0; look = 0.4; }
+      if (te > wt('carlos1', 'Será') - 0.2) { mood = 'thinking'; pose = 'chin'; }
+    } else {
+      mood = 'thinking'; pose = 'chin'; lookY = -0.6; look = 0.7;
+      if (after) { mood = 'determined'; pose = 'type'; lookY = 1; look = 0; }
+    }
+    person(c, 'carlos', { x: 270, y: 700, sit: true, t: te, talk: talkOf('carlos', te), mood, pose, look, lookY, glow: pose !== 'chin', nod: after ? Math.sin(te * 6) * 3 * (1 - pr(te, M.freeze2 + 1.2, M.freeze2 + 1.6)) : 0 });
+    if (think) {
+      for (let i = 0; i < 3; i++) { const k = pop(te, M.s4_think + 0.2 + i * 0.35); if (k <= 0 || after) continue; c.save(); c.translate(320 + i * 32, 290 - i * 34 + Math.sin(te * 3 + i) * 4); c.scale(k, k); txt(c, '?', 0, 0, 30 + i * 6, COL.navy, { stroke: '#fff', sw: 5 }); c.restore(); }
+    }
+    if (!think && te > notify && te < c1.s + 0.5) {
+      // balão com prévia do grupo
+      const k = pop(te, notify + 0.15) * (1 - pr(te, c1.s, c1.s + 0.5));
+      c.save(); c.translate(400, 330); c.scale(k * 0.8, k * 0.8);
+      phoneFrame(c, 0, 0, 200, 300, (x, y, w, h) => { c.save(); c.translate(x, y); c.scale(0.55, 0.55); chatScreen(c, 0, 0, w / 0.55, h / 0.55, [{ from: 'neide', text: URG, fwd: true, at: 0, time: '16:02' }, { from: 'ze', img: true, text: '', at: 0, time: '16:31' }], 99, { fs: 15 }); c.restore(); });
+      c.restore();
+    }
+    c.restore();
+    locChip(c, te, M.s4 + 0.4, notify, 'Casa do Seu Carlos');
+  } else {
+    // pesquisa no celular
+    gradBG(c, '#0B1430', '#14213D'); dots(c, te);
+    const k = eo(pr(te, M.s4_search, M.s4_search + 0.4));
+    c.save(); c.translate(270, 470); c.scale(lerp(0.75, 1, k), lerp(0.75, 1, k)); c.translate(-270, -470); c.globalAlpha = k;
+    phoneFrame(c, 270, 470, 380, 740, (x, y, w, h) => searchScreen(c, x, y, w, h, te, { t0: M.s4_search + 0.2, r: [M.s4_r1, M.s4_r2, M.s4_r3, M.s4_r4] }));
+    c.restore();
+    // "nada" carimbos sincronizados com a fala
+    if (te > c2.s) {
+      const stamp = te > wt('carlos2', 'Nenhuma') - 0.2;
+      if (stamp) { const kk = pop(te, wt('carlos2', 'Nenhuma') - 0.2); c.save(); c.translate(270, 560); c.rotate(-0.14); c.scale(kk, kk); fillRR(c, -190, -40, 380, 80, 14, 'rgba(230,57,70,.95)'); txt(c, 'NENHUMA CONFIRMAÇÃO', 0, -6, 26, '#fff'); txt(c, 'em fonte confiável', 0, 22, 17, '#fff', { w: 700 }); c.restore(); }
+    }
+  }
+  freezeFX(c, t, M.freeze2, M.unfreeze2);
+  if (t >= M.freeze2 && t < M.unfreeze2) scene5Overlay(c, t);
+}
+
+const TIPS = [
+  ['tip1', 'v8', 'building', 'Confira a fonte', 'Quem publicou? É um órgão oficial ou um site confiável?'],
+  ['tip2', 'v9', 'news', 'Procure em outros veículos', 'Se for verdade, outras fontes confiáveis vão falar disso.'],
+  ['tip3', 'v10', 'calendar', 'Confira a data', 'Notícia antiga pode voltar como se fosse nova.'],
+  ['tip4', 'v11', 'alert', 'Desconfie do alarme', '"URGENTE", "COMPARTILHE AGORA" e medo sem provas.'],
+  ['tip5', 'v12', 'people', 'Conhecido não é prova', 'Não compartilhe só porque veio de alguém conhecido.'],
+];
+function scene5Overlay(c, t) {
+  const v6 = L_('v6'), v7 = L_('v7'), v13 = L_('v13');
+  const e = veriEnter(t, M.s5_in, M.s5_out);
+  // estrelas no "Muito bem"
+  if (t > v6.s && t < v7.s) {
+    for (let i = 0; i < 6; i++) { const k = pop(t, v6.s + i * 0.12); const a = i / 6 * TAU + t; c.save(); c.translate(270 + Math.cos(a) * 170, 360 + Math.sin(a) * 120); c.scale(k, k); star(c, 0, 0, 16, COL.yellow); c.restore(); }
+    const k = pop(t, v6.s + 0.1); c.save(); c.translate(270, 200); c.rotate(-0.06); c.scale(k, k); pill(c, 0, 0, 'MUITO BEM!', COL.teal, '#fff', 34); c.restore();
+  }
+  if (t > v7.s && t < v13.s + 0.2) {
+    const k = pr(t, v7.s, v7.s + 0.4) * (1 - pr(t, v13.s - 0.2, v13.s + 0.2));
+    card(c, 26, 120, 488, 400, k, 0.012);
+    txt(c, 'Como identificar uma', 244, 40, 22, COL.navy);
+    txt(c, 'NOTÍCIA FALSA?', 244, 72, 30, COL.red);
+    // progresso
+    TIPS.forEach((tp, i) => { const on = t > M[tp[0]]; circ(c, 164 + i * 40, 112, 14, on ? COL.teal : '#E3E8EF'); if (i < 4) txt(c, String(i + 1), 164 + i * 40, 113, 15, on ? '#fff' : '#9AA5B8'); else heart(c, 164 + i * 40, 112, 6, on ? '#fff' : '#9AA5B8'); });
+    let cur = -1; TIPS.forEach((tp, i) => { if (t > M[tp[0]]) cur = i; });
+    if (cur < 0) { magnifier(c, 244, 250, 2.2, COL.teal); }
+    else {
+      const tp = TIPS[cur]; const kk = pop(t, M[tp[0]], 0.45);
+      c.save(); c.translate(244, 260); c.scale(kk, kk);
+      circ(c, 0, -40, 62, '#EAF6F5'); drawIcon(c, tp[2], 0, -40, 1.05);
+      if (tp[0] === 'tip3') { c.beginPath(); c.ellipse(0, -28, 40, 22, 0, 0, TAU); c.strokeStyle = COL.red; c.lineWidth = 4; c.stroke(); }
+      if (tp[0] === 'tip4') { line(c, [[-46, -86], [46, 6]], COL.red, 9); }
+      if (tp[0] === 'tip2') { drawIcon(c, 'news2', 40, -18, 0.6); drawIcon(c, 'check', -44, -78, 0.4); }
+      if (tp[0] === 'tip1') { drawIcon(c, 'check', 46, -80, 0.4); }
+      txt(c, (cur < 4 ? (cur + 1) + '. ' : '') + tp[3], 0, 48, 27, COL.navy);
+      wrap(c, tp[4], 420, 18, 700).forEach((l, j) => txt(c, l, 0, 84 + j * 24, 18, '#3D4A66', { w: 700 }));
+      c.restore();
+    }
+    c.restore();
+  }
+  if (e.vis) {
+    let arms = 'thumb';
+    if (t > v6.e) arms = 'lupa';
+    if (t > M.tip1 && t < L_('v8').e) arms = 'lupaEye';
+    if (t > M.tip3 && t < L_('v10').e - 1.5) arms = 'lupaEye';
+    if (t > v13.s) arms = 'point';
+    veri(c, { x: 135 + e.dx, y: 792 + e.dy, s: 0.86, t, talk: talkOf('veri', t), arms, mood: t > M.tip4 && t < L_('v11').e ? 'serious' : 'happy', gest: speaking('veri', t), rot: e.rot });
+    speedLines(c, 135 + e.dx, 792, pr(t, M.s5_out, M.s5_out + 0.45));
+  }
+}
+function star(c, x, y, r, col) {
+  c.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, rr_ = i % 2 ? r * 0.45 : r; c.lineTo(x + Math.cos(a) * rr_, y + Math.sin(a) * rr_); } c.closePath(); c.fillStyle = col; c.fill();
+}
+
+// ---------- CENA 6 ----------
+function scene6(c, t) {
+  if (t < M.s6_type) {
+    const cam = camKF(t, [[M.s6, 270, 470, 1.4], [M.s6_type, 270, 450, 1.7]]);
+    c.save(); applyCam(c, cam, 0, t); carlosRoom(c, t);
+    person(c, 'carlos', { x: 270, y: 700, sit: true, t, mood: 'determined', pose: 'type', lookY: 1, glow: true });
+    c.restore();
+    locChip(c, t, M.s6 + 0.4, M.s6_type, 'De volta ao grupo da família');
+    return;
+  }
+  if (t < M.s6_rafa) {
+    gradBG(c, '#0B1430', '#14213D'); dots(c, t);
+    const typed = t < M.s6_send ? CARLOS_MSG.slice(0, Math.floor(pr(t, M.s6_type, M.s6_send - 0.1) * CARLOS_MSG.length)) : '';
+    const k = eo(pr(t, M.s6_type, M.s6_type + 0.35));
+    c.save(); c.globalAlpha = k;
+    phoneFrame(c, 270, 470, 380, 760, (x, y, w, h) => chatScreen(c, x, y, w, h, [
+      { from: 'neide', text: URG, fwd: true, at: 0, dim: M.s6_send + 1, time: '16:02' },
+      { from: 'ze', img: true, text: '', at: 0, time: '16:31', dim: M.s6_send + 1 },
+      { from: 'carlos', mine: true, text: CARLOS_MSG, at: M.s6_send, time: '17:05', react: { at: L_('carlos3').e - 0.6, n: 3 } },
+    ], t, { typing: typed }));
+    c.restore();
+    return;
+  }
+  if (t < M.s6_lucia) {
+    const l = L_('rafa2');
+    const cam = camKF(t, [[M.s6_rafa, 270, 470, 1.6], [l.e, 270, 455, 1.8]]);
+    c.save(); applyCam(c, cam, 0, t); livingRoom(c, t);
+    rafaOnSofa(c, t, { mood: t < l.s + 1 ? 'surprised' : 'relieved', pose: t < l.s + 1.2 ? 'phone' : 'chest', glow: false, lookY: t < l.s + 1 ? 1 : 0 });
+    c.restore(); return;
+  }
+  if (t < M.s6_ze) {
+    const l = L_('lucia2');
+    const cam = camKF(t, [[M.s6_lucia, 240, 470, 1.45], [l.e, 230, 440, 1.65]]);
+    c.save(); applyCam(c, cam, 0, t); kitchen(c, t);
+    person(c, 'lucia', { x: 245, y: 720, t, talk: talkOf('lucia', t), mood: t > wt('lucia2', 'Da') - 0.2 ? 'happy' : 'sheepish', pose: t > wt('lucia2', 'Da') - 0.2 ? 'down' : 'scratch', gest: true });
+    kitchenCounter(c, t, { bags: true });
+    c.restore(); return;
+  }
+  if (t < M.s6_neide) {
+    const l = L_('ze2');
+    const cam = camKF(t, [[M.s6_ze, 260, 500, 1.3], [l.e, 250, 470, 1.5]]);
+    c.save(); applyCam(c, cam, 0, t); zeRoom(c, t);
+    // pilha de velas e água
+    for (let r = 0; r < 7; r++) for (let k = 0; k < 3 - (r > 4 ? 1 : 0); k++) candleBox(c, 90 + k * 54 + (r % 2) * 10, 760 - r * 30, 1);
+    for (let k = 0; k < 3; k++) waterPack(c, 420 + k * 40, 770, 0.9);
+    person(c, 'ze', { x: 300, y: 790, t, talk: talkOf('ze', t), mood: t > l.e - 0.3 ? 'sheepish' : 'surprised', pose: 'scratch', gest: false });
+    c.restore(); return;
+  }
+  if (t < M.s6_all) {
+    const l = L_('neide2');
+    const cam = camKF(t, [[M.s6_neide, 270, 470, 1.6], [l.e, 270, 455, 1.8]]);
+    c.save(); applyCam(c, cam, 0, t); neideRoom(c, t);
+    person(c, 'neide', { x: 270, y: 690, sit: true, t, talk: talkOf('neide', t), mood: 'sheepish', pose: 'pray', gest: false });
+    c.restore(); return;
+  }
+  // todos juntos: mosaico
+  gradBG(c, '#0B1430', '#1E3163'); dots(c, t);
+  const panels = [['rafa', 20, 150], ['lucia', 280, 150], ['ze', 20, 420], ['neide', 280, 420]];
+  panels.forEach(([who, x, y], i) => {
+    const k = pop(t, M.s6_all + 0.1 + i * 0.15);
+    c.save(); c.translate(x + 120, y + 125); c.scale(k, k); c.translate(-(x + 120), -(y + 125));
+    shadowed(c, 16, 'rgba(0,0,0,.4)', 6, () => fillRR(c, x, y, 240, 250, 22, '#fff'));
+    c.save(); rr(c, x + 8, y + 8, 224, 234, 16); c.clip();
+    c.translate(x + 120, y + 125); c.scale(0.6, 0.6); c.translate(-270, -400);
+    if (who === 'rafa') { livingRoom(c, t); rafaOnSofa(c, t, { mood: 'happy', pose: 'thumb', glow: false }); }
+    if (who === 'lucia') { kitchen(c, t); person(c, 'lucia', { x: 245, y: 720, t, mood: 'happy', pose: 'wave' }); kitchenCounter(c, t, { bags: true }); }
+    if (who === 'ze') { zeRoom(c, t); person(c, 'ze', { x: 270, y: 760, t, mood: 'happy', pose: 'thumb' }); }
+    if (who === 'neide') { neideRoom(c, t); person(c, 'neide', { x: 270, y: 690, sit: true, t, mood: 'happy', pose: 'wave' }); }
+    c.restore();
+    pill(c, x + 120, y + 232, CH_NAMES[who], COL[who], '#fff', 14);
+    c.restore();
+  });
+  const kc = pop(t, M.s6_all + 0.8);
+  c.save(); c.translate(270, 418); c.scale(kc, kc); circ(c, 0, 0, 74, COL.yellow); avatar(c, 'carlos', 0, 0, 66, { t, mood: 'happy', ring: '#fff' }); c.restore();
+  for (let i = 0; i < 8; i++) { const ph = ((t - M.s6_all) * 0.5 + i / 8) % 1; if (t < M.s6_all + 0.8) break; c.globalAlpha = Math.sin(ph * Math.PI); heart(c, 60 + i * 60, 700 - ph * 560, 10, i % 2 ? '#FF8FA3' : COL.red); c.globalAlpha = 1; }
+  txt(c, 'Família avisada. Boato interrompido.', 270, 720, 22, '#fff', { stroke: COL.navy, sw: 6 });
+}
+
+// ---------- CENA 7 ----------
+function familyTogether(c, t) {
+  livingRoom(c, t);
+  person(c, 'carlos', { x: 270, y: 585, s: 0.9, t, mood: 'happy', pose: 'down', gest: false, look: -0.5 });
+  sofa(c, 95, 470, 350, THEMES.rafa);
+  person(c, 'rafa', { x: 205, y: 690, sit: true, t, mood: 'happy', pose: 'down', look: 1, gest: false });
+  person(c, 'lucia', { x: 335, y: 690, sit: true, t, mood: 'happy', pose: 'down', look: -1, gest: false });
+  person(c, 'ze', { x: 70, y: 760, t, mood: 'happy', pose: 'box', gest: false, look: 1 });
+  candleBox(c, 70, 640, 1.1);
+  person(c, 'neide', { x: 470, y: 760, t, mood: 'happy', pose: 'wave', gest: false, look: -1 });
+}
+function scene7(c, t) {
+  if (t < M.final) {
+    const cam = camKF(t, [[M.s7, 270, 520, 1.12], [M.s7_in, 270, 500, 1.0]]);
+    c.save(); applyCam(c, cam, 0, t); familyTogether(c, t); c.restore();
+    locChip(c, t, M.s7 + 0.4, M.s7_in + 1, 'Domingo · A família reunida');
+    if (t > M.s7_in) { c.globalAlpha = 0.5 * pr(t, M.s7_in, M.s7_in + 0.5); c.fillStyle = '#0B1430'; c.fillRect(0, 0, W, H); c.globalAlpha = 1; }
+    const v14 = L_('v14'), v15 = L_('v15'), v16 = L_('v16'), v21 = L_('v21');
+    const panelOn = t > v14.s && t < v21.s + 0.3;
+    if (panelOn) {
+      const k = pr(t, v14.s, v14.s + 0.4) * (1 - pr(t, v21.s - 0.1, v21.s + 0.3));
+      card(c, 26, 120, 488, 420, k, -0.01);
+      if (t < v15.s) {
+        txt(c, 'Como o boato correu', 244, 40, 24, COL.navy);
+        const chain = [['neide', 'Tia Neide'], ['rafa', 'Rafa'], ['lucia', 'Mãe'], ['ze', 'Vovô Zé'], ['carlos', 'Seu Carlos']];
+        const pts = [[70, 170], [175, 110], [290, 170], [390, 110], [420, 270]];
+        const k0 = pop(t, v14.s + 0.2); c.save(); c.translate(80, 300); c.scale(k0, k0); drawIcon(c, 'alert', 0, 0, 0.8); c.restore();
+        chain.forEach(([w, nm], i) => {
+          const at = wt('v14', 'passou') - 0.5 + i * 0.45, kk = pop(t, at);
+          if (i > 0 && kk > 0) line(c, [pts[i - 1], [lerp(pts[i - 1][0], pts[i][0], clamp(kk)), lerp(pts[i - 1][1], pts[i][1], clamp(kk))]], COL.red, 4);
+          if (kk <= 0) return;
+          c.save(); c.translate(pts[i][0], pts[i][1]); c.scale(kk, kk); avatar(c, w, 0, 0, 34, { t, mood: w === 'carlos' ? 'thinking' : 'worried', ring: w === 'carlos' ? COL.teal : COL.red }); pill(c, 0, 50, nm, '#fff', COL.navy, 12); c.restore();
+        });
+        const v = wt('v14', 'verificar') - 0.3;
+        if (t > v) { const kk = pop(t, v); c.save(); c.translate(270, 360); c.scale(kk, kk); pill(c, 0, 0, 'Quase ninguém verificou!', COL.red, '#fff', 20); c.restore(); }
+      } else if (t < v16.s) {
+        txt(c, 'Fake news prejudicam todo mundo', 244, 40, 22, COL.navy);
+        const its = [['fear', 'Medo', 'medo'], ['cart', 'Correria e prejuízo', 'prejudicar'], ['megaphone', 'Desinformação', 'desinformação']];
+        its.forEach(([ic, lb, w], i) => { const kk = pop(t, wt('v15', w) - 0.25); if (kk <= 0) return; c.save(); c.translate(90 + i * 150, 180); c.scale(kk, kk); circ(c, 0, 0, 52, '#F1F4FA'); drawIcon(c, ic, 0, ic === 'cart' ? -4 : 0, ic === 'cart' ? 0.9 : 0.95); txt(c, lb, 0, 82, 16, COL.navy); c.restore(); });
+        if (t > wt('v15', 'afetam')) { const kk = pop(t, wt('v15', 'afetam')); c.save(); c.translate(244, 330); c.scale(kk, kk); pill(c, 0, 0, 'não só quem acredita', COL.navy, '#fff', 18); c.restore(); }
+      } else {
+        const words = [['PARE', 'pare', COL.red], ['PENSE', 'pense', COL.yellow], ['PESQUISE', 'pesquise', COL.teal]];
+        if (t < M.list) {
+          txt(c, 'Antes de compartilhar...', 244, 40, 24, COL.navy);
+          words.forEach(([w, f, col], i) => { const kk = pop(t, wt('v16', f) - 0.15); if (kk <= 0) return; c.save(); c.translate(244, 130 + i * 92); c.rotate((i - 1) * 0.04); c.scale(kk, kk); pill(c, 0, 0, w, col, i === 1 ? COL.navy : '#fff', 40); c.restore(); });
+        } else {
+          txt(c, 'Lembre-se', 244, 40, 26, COL.navy);
+          const items = [['li1', 'Verifique a fonte.'], ['li2', 'Confira a data.'], ['li3', 'Pesquise antes de compartilhar.'], ['li4', 'Não espalhe informações sem confirmação.']];
+          items.forEach(([m, label], i) => {
+            const kk = pop(t, M[m]); if (kk <= 0) return;
+            const y = 100 + i * 74;
+            c.save(); c.translate(40, y); c.globalAlpha = clamp(kk);
+            fillRR(c, 0, 0, 408, 60, 14, '#F1F4FA');
+            circ(c, 32, 30, 20, COL.teal); line(c, [[22, 30], [29, 37], [42, 22]], '#fff', 5);
+            txt(c, (i + 1) + '.', 64, 31, 20, COL.navy, { a: 'left' });
+            wrap(c, label, 300, 18, 800).forEach((l, j, arr) => txt(c, l, 88, 31 + (j - (arr.length - 1) / 2) * 21, 18, COL.navy, { a: 'left', w: 800 }));
+            c.restore();
+          });
+        }
+      }
+      c.restore();
+    }
+    if (t > M.s7_in) {
+      const k = eob(pr(t, M.s7_in, M.s7_in + 0.55));
+      const big = t > v21.s - 0.2; const bk = eio(pr(t, v21.s - 0.2, v21.s + 0.5));
+      const x = lerp(140, 270, bk), y = lerp(792, 800, bk), s = lerp(0.86, 1.25, bk);
+      let arms = 'present';
+      if (t < v14.s + 1) arms = 'wave';
+      else if (t > M.list && t < v21.s) arms = 'pointUp';
+      else if (big) arms = t > wt('v21', 'Não') - 0.2 ? 'stop' : 'present';
+      veri(c, { x, y: y + (1 - k) * 420, s, t, talk: talkOf('veri', t), arms, gest: speaking('veri', t), mood: big && t > wt('v21', 'mentira') - 0.3 ? 'serious' : 'happy' });
+    }
+    return;
+  }
+  if (t < M.credits) {
+    // tela final
+    gradBG(c, '#0B1430', '#1E3163'); dots(c, t);
+    const v22 = L_('v22');
+    const ws = [['PARE.', M.final + 0.1, '#fff'], ['PENSE.', M.final + 0.45, COL.yellow], ['VERIFIQUE.', M.final + 0.8, COL.teal]];
+    // sincroniza com a voz, se já estiver falando
+    ws[0][1] = Math.min(ws[0][1], wt('v22', 'Pare') - 0.1); ws[1][1] = Math.min(ws[1][1], wt('v22', 'Pense') - 0.1); ws[2][1] = Math.min(ws[2][1], wt('v22', 'Verifique') - 0.1);
+    ws.forEach(([w, at, col], i) => { const k = pop(t, at, 0.5); if (k <= 0) return; c.save(); c.translate(270, 210 + i * 92); c.scale(k, k); c.rotate((i - 1) * -0.03); txt(c, w, 0, 0, i === 2 ? 70 : 76, col, { stroke: '#0B1430', sw: 10 }); c.restore(); });
+    const k4 = pr(t, wt('v22', 'informação') - 0.3, wt('v22', 'informação') + 0.3);
+    c.globalAlpha = k4; fillRR(c, 40, 470, 460, 96, 22, 'rgba(255,255,255,.1)');
+    txt(c, 'A informação também é', 270, 502, 26, '#fff'); txt(c, 'responsabilidade sua!', 270, 536, 30, COL.yellow); c.globalAlpha = 1;
+    for (let i = 0; i < 14; i++) { const ph = ((t - M.final) * 0.35 + hash(i)) % 1; c.globalAlpha = Math.sin(ph * Math.PI) * 0.8; star(c, hash(i + 4) * W, 640 - ph * 600, 6 + hash(i) * 6, i % 2 ? COL.yellow : '#fff'); c.globalAlpha = 1; }
+    veri(c, { x: 270, y: 800 + (1 - eob(pr(t, M.final, M.final + 0.6))) * 300, s: 0.8, t, talk: talkOf('veri', t), arms: t > v22.e ? 'wave' : 'thumb', gest: speaking('veri', t) });
+    return;
+  }
+  // créditos
+  gradBG(c, '#0B1430', '#14213D');
+  const a = pr(t, M.credits, M.credits + 0.6) * (1 - pr(t, M.end - 1.2, M.end));
+  c.globalAlpha = a;
+  txt(c, 'O APAGÃO', 270, 150, 48, '#fff'); txt(c, 'QUE PAROU O BRASIL', 270, 198, 32, COL.yellow);
+  txt(c, 'Um curta educativo sobre fake news na família', 270, 245, 17, '#BFD7FF', { w: 700 });
+  const cast = ['rafa', 'lucia', 'ze', 'neide', 'carlos'];
+  cast.forEach((w, i) => { const x = 70 + i * 100; avatar(c, w, x, 340, 36, { t, mood: 'happy' }); txt(c, CH_NAMES[w], x, 396, 14, '#fff', { w: 800 }); });
+  avatar(c, 'veri', 270, 470, 40, { t, ring: COL.yellow }); txt(c, 'Veri, o narrador', 270, 528, 16, COL.yellow);
+  txt(c, 'Trabalho escolar · Senac', 270, 610, 22, '#fff');
+  txt(c, 'Tema: Fake news na família', 270, 642, 16, '#BFD7FF', { w: 700 });
+  txt(c, 'História e personagens fictícios.', 270, 700, 14, 'rgba(255,255,255,.65)', { w: 600 });
+  txt(c, 'Vozes geradas por síntese de voz neural (pt-BR).', 270, 722, 14, 'rgba(255,255,255,.65)', { w: 600 });
+  txt(c, 'Pare. Pense. Verifique.', 270, 800, 24, COL.teal);
+  c.globalAlpha = 1;
+}
+
+// ===================== render principal =====================
+function render(c, t) {
+  c.save();
+  c.fillStyle = '#0B1430'; c.fillRect(0, 0, W, H);
+  if (t < M.s1) opening(c, t);
+  else if (t < M.s2) scene1(c, t);
+  else if (t < M.s4) scene2(c, t);
+  else if (t < M.s6) scene4(c, t);
+  else if (t < M.s7) scene6(c, t);
+  else scene7(c, t);
+  c.restore();
+  wipes(c, t);
+  sceneCard(c, t);
+  if (window.SUBS !== false) subtitles(c, t);
+}
+
+// ===================== player =====================
+(function () {
+  const $ = id => document.getElementById(id);
+  const cv = $('cv'), ctx = cv.getContext('2d'), aud = $('aud'), stage = $('stage');
+  const DUR = TLD.dur;
+  let mode = 'audio';           // 'audio' | 'clock' (sem áudio) | 'tts' (voz do navegador)
+  let playing = false, started = false, clockBase = 0, clockStart = 0, lastT = 0, scale = 1;
+  const fmt = s => { s = Math.max(0, Math.floor(s)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+
+  // ---- tamanho do canvas
+  function resize() {
+    const r = cv.getBoundingClientRect(); const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr); scale = cv.width / W;
+    draw(curT());
+  }
+  function draw(t) {
+    ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, cv.width, cv.height);
+    ctx.setTransform(scale, 0, 0, scale, 0, 0);
+    try { render(ctx, t); } catch (e) { console.error(e); }
+  }
+  // ---- relógio
+  function curT() {
+    if (mode === 'audio') return aud.currentTime || 0;
+    return playing ? clockBase + (performance.now() - clockStart) / 1000 : clockBase;
+  }
+  function setT(t) {
+    t = clamp(t, 0, DUR);
+    if (mode === 'audio') { try { aud.currentTime = t; } catch (e) {} }
+    else { clockBase = t; clockStart = performance.now(); ttsReset(t); }
+    draw(t); ui(t);
+  }
+
+  // ---- capítulos e marcas
+  const CHAPS = [['open', 'Início', 'Abertura'], ...SCENES.map(([m, n, title]) => [m, 'Cena ' + n, title]), ['final', 'Fim', 'Pare. Pense. Verifique.']];
+  const chapEls = CHAPS.map(([m, n, title]) => {
+    const b = document.createElement('button'); b.className = 'chap'; b.type = 'button'; b.innerHTML = `<b>${n.toUpperCase()}</b>${title}`;
+    b.onclick = () => { const tt = M[m] + (m === 'open' ? 0 : 0.01); if (!started) begin(tt); else setT(tt); };
+    $('chapters').appendChild(b); return b;
+  });
+  SCENES.forEach(([m]) => { const i = document.createElement('i'); i.style.left = (M[m] / DUR * 100) + '%'; $('ticks').appendChild(i); });
+  $('seek').max = DUR; $('tDur').textContent = fmt(Math.round(DUR));
+  $('durFact').textContent = Math.floor(DUR / 60) + ' min ' + Math.round(DUR % 60) + ' s';
+  function chapIdx(t) { let k = 0; CHAPS.forEach(([m], i) => { if (t >= M[m] - 0.001) k = i; }); return k; }
+  let lastChap = -1;
+  function ui(t) {
+    $('tCur').textContent = fmt(t);
+    const s = $('seek'); if (!seeking) s.value = t; s.style.setProperty('--p', (t / DUR * 100) + '%');
+    const k = chapIdx(t);
+    if (k !== lastChap) { lastChap = k; chapEls.forEach((e, i) => e.classList.toggle('cur', i === k)); $('sceneName').textContent = CHAPS[k][1] + ' · ' + CHAPS[k][2]; }
+  }
+  function setPP(p) {
+    $('ppIcon').innerHTML = p ? '<rect x="6" y="4.5" width="4.2" height="15" rx="1.2" fill="currentColor"/><rect x="13.8" y="4.5" width="4.2" height="15" rx="1.2" fill="currentColor"/>' : '<path d="M7 4.5v15l13-7.5z" fill="currentColor"/>';
+    $('pp').setAttribute('aria-label', p ? 'Pausar' : 'Reproduzir');
+  }
+
+  // ---- laço
+  function loop() {
+    if (window.__export) return;
+    const t = curT();
+    if (mode !== 'audio' && playing && t >= DUR) { pause(); clockBase = DUR; finish(); }
+    if (mode === 'tts' && playing) ttsTick(t);
+    draw(Math.min(t, DUR)); ui(Math.min(t, DUR)); lastT = t;
+    requestAnimationFrame(loop);
+  }
+
+  // ---- áudio
+  let audioReady = false;
+  const st = $('aStatus');
+  function audStatus(msg, cls) { st.textContent = msg; st.className = 'status ' + (cls || ''); }
+  aud.addEventListener('loadedmetadata', () => { audioReady = true; audStatus('Áudio pronto: vozes, música e efeitos (' + fmt(aud.duration) + ').', 'ok'); });
+  aud.addEventListener('canplaythrough', () => { if (!audioReady) { audioReady = true; audStatus('Áudio pronto: vozes, música e efeitos.', 'ok'); } });
+  if (aud.readyState >= 1) { audioReady = true; audStatus('Áudio pronto: vozes, música e efeitos (' + fmt(aud.duration) + ').', 'ok'); }
+  aud.addEventListener('error', () => { if (mode === 'audio') { audStatus('Não foi possível carregar o áudio.', 'err'); if (started) showErr('O arquivo de áudio não carregou. Verifique a conexão e tente de novo.'); } });
+  aud.addEventListener('waiting', () => { if (playing && mode === 'audio') $('spin').hidden = false; });
+  aud.addEventListener('playing', () => { $('spin').hidden = true; });
+  aud.addEventListener('canplay', () => { $('spin').hidden = true; });
+  aud.addEventListener('ended', () => { if (mode === 'audio') { playing = false; setPP(false); finish(); } });
+  aud.addEventListener('pause', () => { if (mode === 'audio' && playing && !aud.ended) { playing = false; setPP(false); } });
+
+  function showErr(msg) { $('errMsg').textContent = msg; $('errOv').hidden = false; $('start').hidden = true; $('spin').hidden = true; playing = false; setPP(false); }
+  function finish() { $('endOv').hidden = false; }
+
+  async function play() {
+    $('endOv').hidden = true; $('errOv').hidden = true;
+    if (curT() >= DUR - 0.05) setT(0);
+    if (mode === 'audio') {
+      $('spin').hidden = audioReady;
+      try { await aud.play(); playing = true; setPP(true); $('spin').hidden = true; }
+      catch (e) {
+        $('spin').hidden = true;
+        if (e && e.name === 'NotAllowedError') showErr('O navegador bloqueou o som. Toque em "Tentar de novo".');
+        else showErr('O áudio não pôde ser reproduzido (' + (e && e.name || 'erro') + ').');
+      }
+    } else { clockStart = performance.now(); playing = true; setPP(true); if (mode === 'tts') ttsReset(clockBase); }
+  }
+  function pause() {
+    if (mode === 'audio') aud.pause(); else { clockBase = curT(); }
+    playing = false; setPP(false);
+    if (mode === 'tts') try { speechSynthesis.cancel(); } catch (e) {}
+  }
+  function begin(t) {
+    started = true; $('start').hidden = true;
+    if (typeof t === 'number') setT(t);
+    play();
+  }
+  $('playBig').onclick = () => begin(0);
+  $('again').onclick = () => { setT(0); play(); };
+  $('retry').onclick = () => { mode = 'audio'; $('errOv').hidden = true; aud.load(); play(); };
+  $('silent').onclick = () => { const t = curT(); mode = 'clock'; clockBase = t; $('errOv').hidden = true; play(); };
+  $('useTTS').onclick = async () => {
+    const v = await pickVoice();
+    if (!v) { $('errMsg').textContent = 'Este navegador não tem nenhuma voz em português instalada. Dá para assistir com legendas ou tentar o áudio de novo.'; $('useTTS').hidden = true; return; }
+    const t = curT(); mode = 'tts'; clockBase = t; $('errOv').hidden = true; play();
+  };
+  $('pp').onclick = () => { if (!started) return begin(0); playing ? pause() : play(); };
+
+  // ---- voz do navegador (alternativa se o arquivo de áudio falhar)
+  let ttsVoice = null, spoken = new Set();
+  function pickVoice() {
+    return new Promise(res => {
+      if (!('speechSynthesis' in window)) return res(null);
+      const choose = () => { const vs = speechSynthesis.getVoices(); return vs.find(v => /pt[-_]BR/i.test(v.lang)) || vs.find(v => /^pt/i.test(v.lang)) || null; };
+      let v = choose(); if (v) { ttsVoice = v; return res(v); }
+      speechSynthesis.onvoiceschanged = () => { v = choose(); ttsVoice = v; res(v); };
+      setTimeout(() => { ttsVoice = choose(); res(ttsVoice); }, 2500);
+    });
+  }
+  const PITCH = { veri: 1.15, rafa: 1.2, lucia: 1.0, ze: 0.7, neide: 1.3, carlos: 0.85 };
+  function ttsReset(t) { spoken = new Set(LINES.filter(l => l.s < t - 0.2).map(l => l.id)); try { speechSynthesis.cancel(); } catch (e) {} }
+  function ttsTick(t) {
+    for (const l of LINES) if (!spoken.has(l.id) && t >= l.s && t < l.e) {
+      spoken.add(l.id);
+      const u = new SpeechSynthesisUtterance(l.text); u.voice = ttsVoice; u.lang = ttsVoice ? ttsVoice.lang : 'pt-BR';
+      u.pitch = PITCH[l.who] || 1; u.rate = 1.08; speechSynthesis.speak(u);
+    }
+  }
+
+  // ---- barra de progresso
+  let seeking = false;
+  const seek = $('seek');
+  seek.addEventListener('input', () => { seeking = true; const t = +seek.value; setT(t); });
+  seek.addEventListener('change', () => { seeking = false; if (!started) { started = true; $('start').hidden = true; play(); } });
+
+  // ---- legendas
+  window.SUBS = true;
+  function toggleCC() { window.SUBS = !window.SUBS; $('cc').classList.toggle('on', window.SUBS); $('cc').setAttribute('aria-pressed', window.SUBS); draw(curT()); }
+  $('cc').onclick = toggleCC;
+
+  // ---- volume
+  const vol = $('vol');
+  function volIcon() { const m = aud.muted || aud.volume === 0; $('volIcon').innerHTML = m ? '<path d="M4 9v6h4l5 4V5L8 9z" fill="currentColor"/><path d="M16 9l5 6M21 9l-5 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>' : '<path d="M4 9v6h4l5 4V5L8 9z" fill="currentColor"/><path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'; $('mute').classList.toggle('on', m); }
+  vol.addEventListener('input', () => { aud.volume = +vol.value; aud.muted = +vol.value === 0; vol.style.setProperty('--p', (vol.value * 100) + '%'); volIcon(); });
+  vol.style.setProperty('--p', '100%');
+  $('mute').onclick = () => { aud.muted = !aud.muted; volIcon(); };
+  // iOS ignora volume por código: esconde o controle deslizante e deixa só o botão de silenciar
+  try { aud.volume = 0.5; if (aud.volume !== 0.5) vol.hidden = true; aud.volume = 1; } catch (e) { vol.hidden = true; }
+
+  // ---- tela cheia
+  $('fs').onclick = async () => {
+    try { if (document.fullscreenElement) await document.exitFullscreen(); else await (stage.requestFullscreen ? stage.requestFullscreen() : stage.webkitRequestFullscreen()); } catch (e) {}
+  };
+  document.addEventListener('fullscreenchange', () => setTimeout(resize, 50));
+
+  // ---- teclado
+  document.addEventListener('keydown', e => {
+    if (e.target && e.target.tagName === 'INPUT' && e.key !== ' ') return;
+    if (e.key === ' ' || e.key === 'k') { e.preventDefault(); $('pp').click(); }
+    else if (e.key === 'ArrowRight') { e.preventDefault(); setT(curT() + 5); }
+    else if (e.key === 'ArrowLeft') { e.preventDefault(); setT(curT() - 5); }
+    else if (e.key === 'c' || e.key === 'C') toggleCC();
+    else if (e.key === 'm' || e.key === 'M') $('mute').click();
+    else if (e.key === 'f' || e.key === 'F') $('fs').click();
+  });
+  cv.addEventListener('click', () => { if (started) $('pp').click(); });
+
+  // ---- início: espera as fontes para o primeiro quadro
+  window.addEventListener('resize', resize);
+  const fontsReady = Promise.race([
+    Promise.all(['800 20px "Baloo 2"', '700 20px "Baloo 2"', '600 20px "Baloo 2"'].map(f => document.fonts.load(f))).catch(() => {}),
+    new Promise(r => setTimeout(r, 3000)),
+  ]);
+  fontsReady.then(() => { wrapCache.clear(); resize(); draw(3.0); });
+  resize(); draw(3.0);
+  // quadro de capa (título) até começar
+  const origCurT = curT;
+  requestAnimationFrame(function first() { if (window.__export) return; if (!started) { draw(3.0); ui(0); requestAnimationFrame(first); } else loop(); });
+
+  // gancho para exportar vídeo quadro a quadro
+  window.__renderAt = t => { draw(t); };
+  window.__fontsReady = fontsReady;
+})();
+
+</script>

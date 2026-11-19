@@ -1,0 +1,22 @@
+const { chromium } = require('playwright'); const path = require('path');
+(async () => {
+  const b = await chromium.launch({ args: ['--autoplay-policy=user-gesture-required'] });
+  const p = await b.newPage({ viewport: { width: 400, height: 860 }, deviceScaleFactor: 1 });
+  const errs = []; p.on('pageerror', e => errs.push(e.message));
+  await p.goto('file://' + path.resolve(__dirname, '../dist/index.html'));
+  await p.waitForFunction(() => document.getElementById('aud').readyState >= 1, null, { timeout: 15000 });
+  console.log('status:', await p.textContent('#aStatus'));
+  await p.screenshot({ path: process.argv[2] + '/start.png' });
+  await p.click('#playBig');
+  await p.waitForTimeout(4000);
+  const s1 = await p.evaluate(() => { const a = document.getElementById('aud'); return { t: a.currentTime, paused: a.paused, dur: a.duration, vol: a.volume, muted: a.muted, err: !document.getElementById('errOv').hidden }; });
+  console.log('after 4s:', JSON.stringify(s1));
+  await p.screenshot({ path: process.argv[2] + '/playing.png' });
+  await p.evaluate(() => { const a = document.getElementById('aud'); a.currentTime = a.duration - 2; });
+  await p.waitForTimeout(3500);
+  console.log('ended overlay visible:', await p.isVisible('#endOv'), 'scene:', await p.textContent('#sceneName'));
+  await p.screenshot({ path: process.argv[2] + '/end.png' });
+  await p.click('#again'); await p.waitForTimeout(1500);
+  console.log('replay t:', await p.evaluate(() => document.getElementById('aud').currentTime.toFixed(2)), 'errors', JSON.stringify(errs));
+  await b.close();
+})();

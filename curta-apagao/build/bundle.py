@@ -1,0 +1,10 @@
+import os
+root=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+src=lambda f: open(os.path.join(root,'src',f),encoding='utf-8').read()
+code="\n".join(src(f) for f in ["core.js","chars.js","sets.js","ui.js","scenes.js","player.js"])
+tl=open(os.path.join(root,'timeline.js'),encoding='utf-8').read()
+html=src("shell.html").replace("/*__TIMELINE__*/",tl).replace("/*__CODE__*/",code)
+os.makedirs(os.path.join(root,'dist'),exist_ok=True)
+open(os.path.join(root,'dist','index.html'),'w',encoding='utf-8').write(html)
+import shutil; shutil.copy(os.path.join(root,'trilha.mp3'),os.path.join(root,'dist','trilha.mp3'))
+print(len(html),"bytes")
